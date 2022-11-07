@@ -1,0 +1,32 @@
+---
+description: >
+  Execute Ansible lint
+
+parameters:
+  molecule-role-test:
+    description:
+    default: false
+    type: boolean
+  molecule-playbook-test:
+    description:
+    default: false
+    type: boolean
+
+steps:
+  - run:
+      name: Show Ansible lint version
+      command: |
+        ansible-lint --version
+  - run:
+      name: Show Ansible version
+      command: |
+        ansible --version
+        ansible-community --version
+  - run:
+      name: Install the role and dependent roles for Molecule tests
+      command: <<include(scripts/install-molecule-test-roles.sh)>>
+      environment:
+        PARAM_MOLECULE_ROLE_TEST: << parameters.molecule-role-test >>
+  - run:
+      name: Execute Ansible lint
+      command: ansible-lint

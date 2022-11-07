@@ -1,0 +1,15 @@
+---
+dependencies: []
+galaxy_info:
+  author: mamono210
+  company: no name
+  description: Dummy role for test
+  galaxy_tags: []
+  license: "license (BSD, MIT)"
+  min_ansible_version: 6.0.0
+  role_name: project
+  platforms:
+    - name: EL
+      release:
+        - 7
+        - 8

@@ -1,0 +1,57 @@
+---
+version: 2.1
+orbs:
+  ansible-lint: orbss/ansible-lint@dev:<<pipeline.git.revision>>
+  orb-tools: circleci/orb-tools@11.1
+
+filters: &filters
+  tags:
+    only: /.*/
+
+jobs:
+  playbook-test:
+    executor: ansible-lint/default
+    steps:
+      - run:
+          name: Checkout test repo
+          command: |
+            git clone https://github.com/ansible-playbooks-mamono210/wordpress_install.git .
+      - ansible-lint/execute:
+          molecule-playbook-test: true
+  role-test:
+    executor: ansible-lint/default
+    steps:
+      - checkout
+      - run:
+          name: Prepare Ansible role files
+          command: |
+            mv test_resources/.ansible-lint .
+            mv test_resources/defaults .
+            mv test_resources/meta .
+            mv test_resources/molecule .
+            mv test_resources/tasks .
+      - ansible-lint/execute:
+          molecule-role-test: true
+workflows:
+  test-deploy:
+    jobs:
+      - role-test:
+          filters: *filters
+      - playbook-test:
+          filters: *filters
+      - orb-tools/pack:
+          filters: *filters
+      - orb-tools/publish:
+          orb-name: orbss/ansible-lint
+          vcs-type: << pipeline.project.type >>
+          pub-type: production
+          requires:
+            - orb-tools/pack
+            - playbook-test
+            - role-test
+          context: <publishing-context>
+          filters:
+            branches:
+              ignore: /.*/
+            tags:
+              only: /^v[0-9]+\.[0-9]+\.[0-9]+$/

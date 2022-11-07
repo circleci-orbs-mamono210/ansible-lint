@@ -1,0 +1,8 @@
+---
+description: CircleCI executor Ansible lint
+docker:
+  - image: '<<parameters.image>>'
+parameters:
+  image:
+    default: ghcr.io/docker-images-mamono210/circleci-executors/ansible-lint:latest
+    type: string
