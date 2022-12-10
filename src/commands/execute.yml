@@ -27,6 +27,7 @@ steps:
       command: <<include(scripts/install-molecule-test-roles.sh)>>
       environment:
         PARAM_MOLECULE_ROLE_TEST: << parameters.molecule-role-test >>
+        PARAM_MOLECULE_PLAYBOOK_TEST: << parameters.molecule-playbook-test >>
   - run:
       name: Execute Ansible lint
       command: ansible-lint
