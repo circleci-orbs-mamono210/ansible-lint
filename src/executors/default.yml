@@ -2,7 +2,12 @@
 description: CircleCI executor Ansible lint
 docker:
   - image: '<<parameters.image>>'
+resource_class: '<<parameters.resource_class>>'
 parameters:
   image:
     default: ghcr.io/docker-images-mamono210/circleci-executors/ansible-lint:latest
     type: string
+  resource_class:
+    default: "small"
+    enum: ["small", "medium", "medium+", "large"]
+    type: enum

@@ -18,6 +18,17 @@ jobs:
             git clone https://github.com/ansible-playbooks-mamono210/wordpress_install.git .
       - ansible-lint/execute:
           molecule-playbook-test: true
+  resource-class-test:
+    executor:
+      name: ansible-lint/default
+      resource_class: medium
+    steps:
+      - run:
+          name: Checkout test repo
+          command: |
+            git clone https://github.com/ansible-playbooks-mamono210/wordpress_install.git .
+      - ansible-lint/execute:
+          molecule-playbook-test: true
   role-test:
     executor: ansible-lint/default
     steps:
@@ -35,9 +46,11 @@ jobs:
 workflows:
   test-deploy:
     jobs:
-      - role-test:
-          filters: *filters
       - playbook-test:
+          filters: *filters
+      - resource-class-test:
+          filters: *filters
+      - role-test:
           filters: *filters
       - orb-tools/pack:
           filters: *filters
@@ -48,6 +61,7 @@ workflows:
           requires:
             - orb-tools/pack
             - playbook-test
+            - resource-class-test
             - role-test
           context: <publishing-context>
           filters:
