@@ -1,0 +1,7 @@
+---
+- name: Check installed playbook and Molecule roles
+  hosts: localhost
+  gather_facts: false
+  roles:
+    - fixture_playbook_epel
+    - fixture_molecule_epel

@@ -1,0 +1,13 @@
+{
+  "selected_manifest_digest": "sha256:3dd0b103851b24ea8796af7126fff4340023a6288293030ae65b01f0446a9fdf",
+  "comparison_manifest_digest": "sha256:3dd0b103851b24ea8796af7126fff4340023a6288293030ae65b01f0446a9fdf",
+  "platform": "linux/amd64",
+  "comparison_resolved_at": "2026-10-29T21:19:14+09:00",
+  "source": "image-lock.json at 0c739a69f90a2bff970be81a420ff5c17f40a358",
+  "public_0_0_3_source_sha256": "0f4661df54855162138791c12a11e7045fabb902906babb8053d56605c78a4c5",
+  "handoff_journal": 11078,
+  "image_difference_comparison": "omitted_same_recorded_manifest_and_platform",
+  "reason": "Recorded selected and comparison images identify the same image. Do not resolve latest again. This does not reconstruct historical 0.0.3 runs or prove identical results for external inputs.",
+  "six_regression_categories_required": true,
+  "custom_image_is_separate_parameter_test": true
+}

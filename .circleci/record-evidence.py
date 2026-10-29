@@ -63,9 +63,9 @@ def revision(ref):
     }
 
 
-def prepare(source):
+def prepare(source, lock_file="image-lock.json"):
     source = Path(source).resolve()
-    EVIDENCE.mkdir(parents=True, exist_ok=True)
+    EVIDENCE.mkdir(parents=True, exist_ok=False)
     helper = EVIDENCE / "record-evidence.py"
     shutil.copyfile(__file__, helper)
     real_git = shutil.which("git")
@@ -75,7 +75,7 @@ def prepare(source):
     commit = git_output("-C", str(source), "rev-parse", "HEAD")
     if commit != os.environ["CIRCLE_SHA1"]:
         raise ValueError("The evidence source checkout must match CIRCLE_SHA1")
-    lock = json.loads((source / "image-lock.json").read_text(encoding="utf-8"))
+    lock = json.loads((source / lock_file).read_text(encoding="utf-8"))
     actual_platform = platform.system().lower() + "/" + {"x86_64": "amd64"}.get(
         platform.machine(), platform.machine()
     )
@@ -143,14 +143,15 @@ def wrap_git(args):
     return 0
 
 
-def worktree():
+def worktree(source="."):
+    os.chdir(source)
     record = revision("HEAD")
     record.update({"kind": "integration-test-worktree", "observed_at": now()})
     append_record("repositories.jsonl", record)
     print(json.dumps(record), flush=True)
 
 
-def report():
+def report(require_external=True):
     for name in ("context.json", "versions.json", "package-versions.json", "repositories.jsonl", "errors.jsonl"):
         path = EVIDENCE / name
         if path.exists():
@@ -160,7 +161,7 @@ def report():
     records = [json.loads(line) for line in (EVIDENCE / "repositories.jsonl").read_text().splitlines()]
     if not any(r["kind"] == "integration-test-worktree" for r in records):
         raise ValueError("Missing test worktree revision")
-    if not any(r["kind"] == "installed-role-archive" and
+    if require_external and not any(r["kind"] == "installed-role-archive" and
                r["repository"].startswith("https://github.com/ansible-roles-mamono210/") for r in records):
         raise ValueError("Missing external role archive revision")
     print("Repository evidence collected. Integration-test status is reported separately by CircleCI.")
@@ -170,14 +171,14 @@ def main():
     try:
         action = sys.argv[1]
         if action == "prepare":
-            prepare(sys.argv[2])
+            prepare(sys.argv[2], sys.argv[3] if len(sys.argv) > 3 else "image-lock.json")
         elif action == "git":
             code = wrap_git(sys.argv[2:])
             return code if code >= 0 else 128 - code
         elif action == "worktree":
-            worktree()
+            worktree(sys.argv[2] if len(sys.argv) > 2 else ".")
         elif action == "report":
-            report()
+            report(sys.argv[2:] != ["no-dependencies"])
         else:
             raise ValueError("Unknown evidence action")
         return 0

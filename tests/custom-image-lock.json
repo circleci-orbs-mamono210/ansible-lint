@@ -1,0 +1,24 @@
+{
+  "selected_image": {
+    "reference": "ghcr.io/docker-images-mamono210/circleci-executors/ansible-lint@sha256:4ea7fe7ebbe7fd06bd5a7fc61b8931c3303a11c9bd4eb06431a810f5914b8718",
+    "manifest_digest": "sha256:4ea7fe7ebbe7fd06bd5a7fc61b8931c3303a11c9bd4eb06431a810f5914b8718",
+    "config_digest": "sha256:6c9840055142fed835f989805e79182a84d72f53c03805cbba63ad53273cb092",
+    "platform": "linux/amd64",
+    "index_digest": null,
+    "tag_at_selection": "26.1.1-py3.14",
+    "verified_at": "2026-10-29T23:25:54+09:00"
+  },
+  "observed_versions": {
+    "python": "3.14.3",
+    "ansible": "13.4.0",
+    "ansible_core": "2.20.3",
+    "ansible_lint": "26.1.1"
+  },
+  "measurement": {
+    "container_execution": false,
+    "method": "Native execution of verified extracted-image Python, ELF loader, shared libraries and Python entry-point scripts. No Docker/container/chroot isolation.",
+    "observed_at": "2026-10-29T23:29:53+09:00",
+    "circleci_confirmation_required": true
+  },
+  "purpose": "Explicit non-default image parameter regression; not the historical 0.0.3 comparison image."
+}

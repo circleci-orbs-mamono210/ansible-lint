@@ -1,0 +1,7 @@
+---
+- name: Check a deliberate missing task name
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - ansible.builtin.debug:
+        msg: "This task deliberately has no name"

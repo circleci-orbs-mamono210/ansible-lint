@@ -1,8 +1,7 @@
 ---
 version: 2.1
 orbs:
-  # orb-tools/continue injects the packed Orb as "ansible-lint" here.
-  # Validate the injected config, not this template on its own.
+  # orb-tools/continue injects this commit's packed Orb as "ansible-lint".
   orb-tools: circleci/orb-tools@12.5.0
 
 filters: &filters
@@ -10,89 +9,166 @@ filters: &filters
     only: /.*/
 
 commands:
-  prepare-ci-evidence:
+  prepare-integration:
     parameters:
-      source-directory:
+      case:
         type: string
-    steps:
-      - run:
-          name: Record image versions and prepare repository evidence
-          command: >-
-            python3 "<< parameters.source-directory >>/.circleci/record-evidence.py"
-            prepare "<< parameters.source-directory >>"
-  collect-ci-evidence:
-    steps:
-      - run:
-          name: Show repository revisions used by the integration test
-          when: always
-          command: python3 /tmp/ansible-lint-ci-evidence/record-evidence.py report
-      - store_artifacts:
-          path: /tmp/ansible-lint-ci-evidence
-          destination: image-and-repository-evidence
-
-jobs:
-  playbook-test:
-    executor: ansible-lint/default
+      image-lock:
+        type: string
+        default: image-lock.json
     steps:
       - checkout:
           path: /tmp/ansible-lint-orb-source
-      - prepare-ci-evidence:
-          source-directory: /tmp/ansible-lint-orb-source
       - run:
-          name: Checkout test repo
+          name: Prepare this commit's fixture and image evidence
           command: |
-            git clone https://github.com/ansible-playbooks-mamono210/wordpress_install.git .
-            python3 /tmp/ansible-lint-ci-evidence/record-evidence.py worktree
+            python3 /tmp/ansible-lint-orb-source/.circleci/record-evidence.py prepare /tmp/ansible-lint-orb-source "<< parameters.image-lock >>"
+            python3 /tmp/ansible-lint-orb-source/.circleci/integration-test.py setup /tmp/ansible-lint-orb-source "<< parameters.case >>"
+      - run:
+          name: Record the local fixture source revision
+          command: python3 /tmp/ansible-lint-ci-evidence/record-evidence.py worktree /tmp/ansible-lint-orb-source
+  verify-integration:
+    steps:
+      - run:
+          name: Verify fixture integrity and actual installed role revisions
+          command: python3 /tmp/ansible-lint-orb-source/.circleci/integration-test.py verify
+  collect-ci-evidence:
+    parameters:
+      dependencies:
+        type: boolean
+        default: true
+    steps:
+      - when:
+          condition: << parameters.dependencies >>
+          steps:
+            - run:
+                name: Show image and repository evidence
+                when: always
+                command: python3 /tmp/ansible-lint-ci-evidence/record-evidence.py report
+      - unless:
+          condition: << parameters.dependencies >>
+          steps:
+            - run:
+                name: Show evidence for a test without role dependencies
+                when: always
+                command: python3 /tmp/ansible-lint-ci-evidence/record-evidence.py report no-dependencies
+      - store_artifacts:
+          path: /tmp/ansible-lint-ci-evidence
+          destination: image-and-repository-evidence
+      - store_artifacts:
+          path: /tmp/ansible-lint-integration-evidence
+          destination: integration-evidence
+
+jobs:
+  normal-test:
+    executor: ansible-lint/default
+    working_directory: /tmp/ansible-lint-case
+    steps:
+      - prepare-integration:
+          case: normal
+      # Both public parameters deliberately use their default false values.
+      - ansible-lint/execute
+      - verify-integration
+      - collect-ci-evidence:
+          dependencies: false
+  role-test:
+    executor: ansible-lint/default
+    working_directory: /tmp/ansible-lint-case
+    steps:
+      - prepare-integration:
+          case: role
+      - ansible-lint/execute:
+          molecule-role-test: true
+      - verify-integration
+      - collect-ci-evidence
+  playbook-test:
+    executor: ansible-lint/default
+    working_directory: /tmp/ansible-lint-case
+    steps:
+      - prepare-integration:
+          case: playbook
       - ansible-lint/execute:
           molecule-playbook-test: true
+      - verify-integration
       - collect-ci-evidence
+  negative-test:
+    executor: ansible-lint/default
+    working_directory: /tmp/ansible-lint-case
+    steps:
+      - prepare-integration:
+          case: negative
+      - run:
+          name: Self-test the exact capture and invocation verifier used below
+          command: |
+            python3 /tmp/ansible-lint-orb-source/.circleci/test-negative-test.py 2>&1 | tee /tmp/negative-self-test.log
+      - run:
+          name: Resolve the real linter and initialize a fresh negative-test observer
+          command: |
+            python3 /tmp/ansible-lint-orb-source/.circleci/negative-test.py prepare /tmp/ansible-lint-orb-source/tests/negative-expected.json /tmp/ansible-lint-negative-evidence
+      - ansible-lint/execute
+      - run:
+          name: Require the exact real violation and one no-argument lint invocation
+          command: python3 /tmp/ansible-lint-orb-source/.circleci/negative-test.py verify /tmp/ansible-lint-negative-evidence
+      - verify-integration
+      - collect-ci-evidence:
+          dependencies: false
+      - store_artifacts:
+          path: /tmp/ansible-lint-negative-evidence
+          destination: negative-evidence
+      - store_artifacts:
+          path: /tmp/negative-self-test.log
+          destination: negative-self-test.log
   resource-class-test:
     executor:
       name: ansible-lint/default
       resource_class: medium
+    working_directory: /tmp/ansible-lint-case
     steps:
-      - checkout:
-          path: /tmp/ansible-lint-orb-source
-      - prepare-ci-evidence:
-          source-directory: /tmp/ansible-lint-orb-source
-      - run:
-          name: Checkout test repo
-          command: |
-            git clone https://github.com/ansible-playbooks-mamono210/wordpress_install.git .
-            python3 /tmp/ansible-lint-ci-evidence/record-evidence.py worktree
+      - prepare-integration:
+          case: resource-class
       - ansible-lint/execute:
           molecule-playbook-test: true
+      - verify-integration
       - collect-ci-evidence
-  role-test:
-    executor: ansible-lint/default
+  custom-image-test:
+    executor:
+      name: ansible-lint/default
+      # Verified separate linux/amd64 image: 26.1.1-py3.14 at selection time.
+      image: ghcr.io/docker-images-mamono210/circleci-executors/ansible-lint@sha256:4ea7fe7ebbe7fd06bd5a7fc61b8931c3303a11c9bd4eb06431a810f5914b8718
+    working_directory: /tmp/ansible-lint-case
     steps:
-      - checkout
-      - prepare-ci-evidence:
-          source-directory: .
-      - run:
-          name: Prepare Ansible role files
-          command: |
-            mv test_resources/.ansible-lint .
-            mv test_resources/defaults .
-            mv test_resources/meta .
-            mv test_resources/molecule .
-            mv test_resources/tasks .
-            python3 /tmp/ansible-lint-ci-evidence/record-evidence.py worktree
+      - prepare-integration:
+          case: custom-image
+          image-lock: tests/custom-image-lock.json
       - ansible-lint/execute:
-          molecule-role-test: true
+          molecule-playbook-test: true
+      - verify-integration
       - collect-ci-evidence
+
 workflows:
   test-deploy:
     jobs:
-      - playbook-test:
-          filters: *filters
-      - resource-class-test:
+      - normal-test:
           filters: *filters
       - role-test:
           filters: *filters
+      - playbook-test:
+          filters: *filters
+      - negative-test:
+          filters: *filters
+      - resource-class-test:
+          filters: *filters
+      - custom-image-test:
+          filters: *filters
       - orb-tools/pack:
-          # This workflow creates its own workspace for production publish.
-          # #5501 will inspect this job's archive in post-steps as well.
+          # This workflow has its own workspace. Inspect its actual publish archive.
+          post-steps:
+            - run:
+                name: Verify the actual publication archive preserves the exit code
+                command: bash .circleci/verify-packed-orb.sh dist/orb_source.tar.gz publication
+            - store_artifacts:
+                path: /tmp/ansible-lint-pack-evidence
+                destination: packed-orb-structure
           filters: *filters
       - orb-tools/publish:
           orb_name: orbss/ansible-lint
@@ -102,11 +178,13 @@ workflows:
           enable_pr_comment: false
           requires:
             - orb-tools/pack
-            - playbook-test
-            - resource-class-test
+            - normal-test
             - role-test
-          # Confirm this project's access and CIRCLE_TOKEN publishing scope.
-          # Only production publish uses this context.
+            - playbook-test
+            - negative-test
+            - resource-class-test
+            - custom-image-test
+          # Only production publish uses the publishing context.
           context: CIRCLECI_ORBS
           filters:
             branches:

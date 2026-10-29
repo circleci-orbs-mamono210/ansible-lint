@@ -1,0 +1,39 @@
+{
+  "exit_code": 2,
+  "violations": [
+    {
+      "rule": "name[missing]",
+      "file": "playbook.yml",
+      "line": 6,
+      "count": 1
+    }
+  ],
+  "stdout_lines": [
+    "name[missing]: All tasks should be named.",
+    "playbook.yml:6 Task/Handler: debug msg=This task deliberately has no name"
+  ],
+  "stderr_lines": [
+    "WARNING  Listing 1 violation(s) that are fatal",
+    "Read documentation for instructions on how to ignore specific rule violations.",
+    "# Rule Violation Summary",
+    "1 name profile:basic tags:idiom",
+    "Failed: 1 failure(s), 0 warning(s) in 1 files processed of 1 encountered. Last profile that met the validation criteria was 'min'."
+  ],
+  "measurement": {
+    "image_manifest_digest": "sha256:3dd0b103851b24ea8796af7126fff4340023a6288293030ae65b01f0446a9fdf",
+    "platform": "linux/amd64",
+    "ansible_lint": "26.10.1",
+    "method": "verified extracted image userspace, no container; CircleCI confirmation is required"
+  },
+  "optional_stderr_notice": {
+    "id": "python314-http304-cleanup",
+    "lines": [
+      "/usr/local/lib/python3.14/tempfile.py:538: ResourceWarning: Implicitly cleaning up <HTTPError 304: 'Not Modified'>",
+      "_warnings.warn(self.warn_message, ResourceWarning)"
+    ],
+    "classification": "Known runtime cleanup warning for an unchanged schema response, not a lint violation or failed role download.",
+    "observed_job": "https://circleci.com/gh/circleci-orbs-mamono210/ansible-lint/454",
+    "observed_commit": "d19accb561fcbc9afa52bb14ef8449a1b81bb808",
+    "scope": "Exact two-line message at most once, Python 3.14.10 / ansible-lint 26.10.1. Other status codes, warnings, partial/duplicate messages and extra errors remain rejected."
+  }
+}

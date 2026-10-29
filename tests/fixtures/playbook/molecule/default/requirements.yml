@@ -1,0 +1,5 @@
+---
+roles:
+  - name: fixture_molecule_epel
+    src: https://github.com/ansible-roles-mamono210/epel.git
+    version: 747af654d2a2e05c1cfabce9c0b79b2a1eae3650

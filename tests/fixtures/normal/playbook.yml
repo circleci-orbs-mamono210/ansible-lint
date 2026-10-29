@@ -1,0 +1,8 @@
+---
+- name: Check a minimal playbook
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: Show a message
+      ansible.builtin.debug:
+        msg: "Orb integration fixture"

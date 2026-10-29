@@ -15,8 +15,14 @@ workflows:
       - orb-tools/lint:
           filters: *filters
       - orb-tools/pack:
-          # #5501 will inspect dist/orb_source.tar.gz in post-steps.
-          # With persist_to_workspace enabled, dist/orb.yml is archived.
+          # Read the exact workspace archive later used for inline injection.
+          post-steps:
+            - run:
+                name: Verify the actual injection archive preserves the exit code
+                command: bash .circleci/verify-packed-orb.sh dist/orb_source.tar.gz injection
+            - store_artifacts:
+                path: /tmp/ansible-lint-pack-evidence
+                destination: packed-orb-structure
           filters: *filters
       - orb-tools/review:
           orb_name: ansible-lint

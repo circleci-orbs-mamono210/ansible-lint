@@ -1,0 +1,3 @@
+---
+# Bound lint discovery and caching to this fixture, including outside Git checkouts.
+project_dir: .
