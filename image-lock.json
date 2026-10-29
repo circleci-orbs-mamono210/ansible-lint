@@ -1,0 +1,194 @@
+{
+  "record_version": 1,
+  "ticket": 5499,
+  "base_commit": "eb08d777057e2d0b66a7dbbc25d557fd88fefd7d",
+  "purpose": "Image identification record only. src/executors/default.yml controls the executor image.",
+  "selected_image": {
+    "repository": "ghcr.io/docker-images-mamono210/circleci-executors/ansible-lint",
+    "tag_at_selection": "26.10.1-py3.14.10",
+    "tag_resolved_at": "2026-10-29T21:21:47+09:00",
+    "reference": "ghcr.io/docker-images-mamono210/circleci-executors/ansible-lint@sha256:3dd0b103851b24ea8796af7126fff4340023a6288293030ae65b01f0446a9fdf",
+    "manifest_digest": "sha256:3dd0b103851b24ea8796af7126fff4340023a6288293030ae65b01f0446a9fdf",
+    "manifest_media_type": "application/vnd.docker.distribution.manifest.v2+json",
+    "index_digest": null,
+    "index_note": "Registry returned a single-platform Docker schema-2 image manifest, not a manifest list/index.",
+    "config_digest": "sha256:7c8d6a23b61771d3004727d1b3ce5d26a62e2a32a45a1e2eb13c47bb5df4aa90",
+    "platform": "linux/amd64",
+    "platform_source": "Verified registry config os/architecture; current CircleCI small/medium Docker executor logs also report linux/amd64.",
+    "selection_reason": "Pin the content currently resolved from the existing default image; no downgrade to the older 26.1.1-py3.14 candidate.",
+    "other_checked_tags": [
+      {
+        "tag": "26.10.1-py3.14",
+        "digest": "sha256:3dd0b103851b24ea8796af7126fff4340023a6288293030ae65b01f0446a9fdf",
+        "resolved_at_jst": "2026-10-29T21:21:41+09:00",
+        "manifest_file": "manifest-26.10.1-py3.14.json"
+      },
+      {
+        "tag": "26.10.1-py3.14.10",
+        "digest": "sha256:3dd0b103851b24ea8796af7126fff4340023a6288293030ae65b01f0446a9fdf",
+        "resolved_at_jst": "2026-10-29T21:21:47+09:00",
+        "manifest_file": "manifest-26.10.1-py3.14.10.json"
+      },
+      {
+        "tag": "26.1.1-py3.14",
+        "digest": "sha256:4ea7fe7ebbe7fd06bd5a7fc61b8931c3303a11c9bd4eb06431a810f5914b8718",
+        "resolved_at_jst": "2026-10-29T21:21:52+09:00",
+        "manifest_file": "manifest-26.1.1-py3.14.json"
+      }
+    ]
+  },
+  "comparison_image": {
+    "source_reference": "ghcr.io/docker-images-mamono210/circleci-executors/ansible-lint:latest",
+    "resolved_at": "2026-10-29T21:19:14+09:00",
+    "reference": "ghcr.io/docker-images-mamono210/circleci-executors/ansible-lint@sha256:3dd0b103851b24ea8796af7126fff4340023a6288293030ae65b01f0446a9fdf",
+    "manifest_digest": "sha256:3dd0b103851b24ea8796af7126fff4340023a6288293030ae65b01f0446a9fdf",
+    "config_digest": "sha256:7c8d6a23b61771d3004727d1b3ce5d26a62e2a32a45a1e2eb13c47bb5df4aa90",
+    "platform": "linux/amd64",
+    "same_as_selected_digest_and_platform": true,
+    "version_measurement_reused_from": "selected_image user-space measurement at 2026-10-29T21:31:43+09:00",
+    "reuse_scope": "Same verified manifest digest and config platform. This reuses the extracted-userspace observations, not an unperformed container run.",
+    "published_orb": "orbss/ansible-lint@0.0.3",
+    "published_source_retrieved_at": "2026-10-29T15:51:51+09:00",
+    "published_source_sha256": "0f4661df54855162138791c12a11e7045fabb902906babb8053d56605c78a4c5",
+    "published_source_path": "executors.default.parameters.image.default",
+    "published_source_reference_matches": true,
+    "handoff_ticket": 5500,
+    "handoff_journal_id": 11078,
+    "historical_image_reconstruction": false
+  },
+  "observed_versions": {
+    "python": "3.14.10",
+    "ansible": "14.5.0",
+    "ansible_core": "2.21.5",
+    "ansible_lint": "26.10.1"
+  },
+  "measurement": {
+    "observed_at": "2026-10-29T21:31:43+09:00",
+    "method": "Native execution of verified extracted-image Python, ELF loader, shared libraries and Python entry-point scripts. No Docker/container/chroot isolation.",
+    "container_execution": false,
+    "commands": [
+      {
+        "logical_command": "python3 --version",
+        "invocation": "Image ELF loader and image Python interpreter; Python entry-point file for Ansible commands. See evidence bundle for exact argv.",
+        "exit_code": 0,
+        "stdout": "Python 3.14.10\n",
+        "stderr": ""
+      },
+      {
+        "logical_command": "ansible-community --version",
+        "invocation": "Image ELF loader and image Python interpreter; Python entry-point file for Ansible commands. See evidence bundle for exact argv.",
+        "exit_code": 0,
+        "stdout": "Ansible community version 14.5.0\n",
+        "stderr": ""
+      },
+      {
+        "logical_command": "ansible --version",
+        "invocation": "Image ELF loader and image Python interpreter; Python entry-point file for Ansible commands. See evidence bundle for exact argv.",
+        "exit_code": 0,
+        "stdout": "ansible [core 2.21.5]\n  config file = None\n  configured module search path = ['/root/.ansible/plugins/modules', '/usr/share/ansible/plugins/modules']\n  ansible python module location = <image-rootfs>/home/circleci/.local/lib/python3.14/site-packages/ansible\n  ansible collection location = /root/.ansible/collections:/usr/share/ansible/collections\n  executable location = <image-rootfs>/home/circleci/.local/bin/ansible\n  python version = 3.14.10 (main, Oct 28 2026, 01:59:47) [GCC 14.2.0] (<image-rootfs>/usr/local/bin/python3.14)\n  jinja version = 3.1.6\n  pyyaml version = 6.0.3 (with libyaml v0.2.5)\n",
+        "stderr": ""
+      },
+      {
+        "logical_command": "ansible-lint --version",
+        "invocation": "Image ELF loader and image Python interpreter; Python entry-point file for Ansible commands. See evidence bundle for exact argv.",
+        "exit_code": 0,
+        "stdout": "ansible-lint 26.10.1 using ansible-core:2.21.5 ansible-compat:26.10.0 ruamel-yaml:0.19.1\n",
+        "stderr": ""
+      }
+    ],
+    "package_metadata_crosscheck": "All three distributions loaded from the verified image userspace and agree with command output.",
+    "limitation": "Host kernel and account context are used; this verifies version reporting from image binaries/packages, not Docker executor integration or the exact container runtime.",
+    "docker_runtime_confirmation_required": true
+  },
+  "registry_pull": {
+    "method": "OCI Distribution API, exact manifest digest and all compressed layer SHA-256/size checks",
+    "completed_at": "2026-10-29T21:27:27+09:00",
+    "manifest_verified": true,
+    "compressed_layers_verified": 7,
+    "uncompressed_diff_ids_verified": 7,
+    "docker_pull_performed_locally": false
+  },
+  "circleci_platform_evidence": [
+    {
+      "job": "role-test",
+      "job_number": 397,
+      "job_url": "https://circleci.com/gh/circleci-orbs-mamono210/ansible-lint/397",
+      "revision": "eb08d777057e2d0b66a7dbbc25d557fd88fefd7d",
+      "resource_class": "small",
+      "executor_type": "docker",
+      "observed_platform": "linux/amd64",
+      "started_at": "2026-10-29T11:46:44.527Z",
+      "stopped_at": "2026-10-29T11:47:10.443Z",
+      "result": "success",
+      "scope": "Before the digest-pinning change; full manifest digest not present in log. Not acceptance evidence for the candidate."
+    },
+    {
+      "job": "resource-class-test",
+      "job_number": 398,
+      "job_url": "https://circleci.com/gh/circleci-orbs-mamono210/ansible-lint/398",
+      "revision": "eb08d777057e2d0b66a7dbbc25d557fd88fefd7d",
+      "resource_class": "medium",
+      "executor_type": "docker",
+      "observed_platform": "linux/amd64",
+      "started_at": "2026-10-29T11:46:44.379Z",
+      "stopped_at": "2026-10-29T11:47:17.893Z",
+      "result": "success",
+      "scope": "Before the digest-pinning change; full manifest digest not present in log. Not acceptance evidence for the candidate."
+    },
+    {
+      "job": "playbook-test",
+      "job_number": 399,
+      "job_url": "https://circleci.com/gh/circleci-orbs-mamono210/ansible-lint/399",
+      "revision": "eb08d777057e2d0b66a7dbbc25d557fd88fefd7d",
+      "resource_class": "small",
+      "executor_type": "docker",
+      "observed_platform": "linux/amd64",
+      "started_at": "2026-10-29T11:46:44.707Z",
+      "stopped_at": "2026-10-29T11:47:25.609Z",
+      "result": "success",
+      "scope": "Before the digest-pinning change; full manifest digest not present in log. Not acceptance evidence for the candidate."
+    }
+  ],
+  "acceptance": {
+    "fixed_reference_circleci_run": "pending_after_patch_is_committed_and_pushed",
+    "docker_version_check": "pending; use verification/verify-image.sh from the ZIP",
+    "required_jobs": [
+      "role-test",
+      "playbook-test",
+      "resource-class-test"
+    ],
+    "evidence_needed": [
+      "candidate commit and job URLs",
+      "full pinned manifest reference and actual platform",
+      "four version outputs from the container",
+      "external repository revisions/reachability when integration tests retrieve them"
+    ],
+    "not_a_ticket_completion_record": true
+  },
+  "evidence_bundle": {
+    "name": "ansible-lint-5499.zip",
+    "directory": "verification",
+    "files": [
+      "registry-resolution.json",
+      "candidate-tags.json",
+      "manifest-latest.json",
+      "image-config-latest.json",
+      "pull-verification.json",
+      "unpack-verification.json",
+      "userspace-measurement.json",
+      "ci/397-metadata.json",
+      "ci/398-metadata.json",
+      "ci/399-metadata.json"
+    ]
+  },
+  "update_policy": {
+    "same_change": [
+      "src/executors/default.yml image default and version comments",
+      "image-lock.json",
+      "README version/image information once created in #5502"
+    ],
+    "versioning": "minor when the public call/execution contract is preserved; major for incompatible changes, including same-tag rebuilds.",
+    "guarantee": "The digest pins image content for linux/amd64. External roles, networks and input files are not pinned by this record.",
+    "initial_readme_owner": 5502
+  }
+}

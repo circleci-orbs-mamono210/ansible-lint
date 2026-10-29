@@ -2,7 +2,9 @@
 version: 2.1
 
 description: >
-  This Orb runs Ansible lint against the checked out code, the Docker image of the Executor is 'ghcr.io/docker-images-mamono210/circleci-executors/ansible-lint:latest'.
+  Run Ansible lint against the working directory with a Docker executor whose
+  default image is pinned by digest. Supports optional Ansible role installation
+  and installation of Molecule requirements before linting.
 
 display:
   home_url: "https://circleci.com/developer/orbs/orb/orbss/ansible-lint"

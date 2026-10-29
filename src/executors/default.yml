@@ -9,7 +9,12 @@ parameters:
       Docker image used to run execute. It must provide ansible-lint, ansible,
       ansible-community, ansible-galaxy, and Bash. Specify a digest to pin its
       contents.
-    default: ghcr.io/docker-images-mamono210/circleci-executors/ansible-lint:latest
+    # Image identity and validation scope: image-lock.json.
+    # Platform: linux/amd64; version check: 2026-10-29T21:31:43+09:00.
+    # Measured from verified extracted image userspace (not a Docker run).
+    # Python 3.14.10; Ansible package 14.5.0;
+    # ansible-core 2.21.5; ansible-lint 26.10.1.
+    default: ghcr.io/docker-images-mamono210/circleci-executors/ansible-lint@sha256:3dd0b103851b24ea8796af7126fff4340023a6288293030ae65b01f0446a9fdf
     type: string
   resource_class:
     description: >
