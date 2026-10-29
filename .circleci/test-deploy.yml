@@ -9,31 +9,66 @@ filters: &filters
   tags:
     only: /.*/
 
+commands:
+  prepare-ci-evidence:
+    parameters:
+      source-directory:
+        type: string
+    steps:
+      - run:
+          name: Record image versions and prepare repository evidence
+          command: >-
+            python3 "<< parameters.source-directory >>/.circleci/record-evidence.py"
+            prepare "<< parameters.source-directory >>"
+  collect-ci-evidence:
+    steps:
+      - run:
+          name: Show repository revisions used by the integration test
+          when: always
+          command: python3 /tmp/ansible-lint-ci-evidence/record-evidence.py report
+      - store_artifacts:
+          path: /tmp/ansible-lint-ci-evidence
+          destination: image-and-repository-evidence
+
 jobs:
   playbook-test:
     executor: ansible-lint/default
     steps:
+      - checkout:
+          path: /tmp/ansible-lint-orb-source
+      - prepare-ci-evidence:
+          source-directory: /tmp/ansible-lint-orb-source
       - run:
           name: Checkout test repo
           command: |
             git clone https://github.com/ansible-playbooks-mamono210/wordpress_install.git .
+            python3 /tmp/ansible-lint-ci-evidence/record-evidence.py worktree
       - ansible-lint/execute:
           molecule-playbook-test: true
+      - collect-ci-evidence
   resource-class-test:
     executor:
       name: ansible-lint/default
       resource_class: medium
     steps:
+      - checkout:
+          path: /tmp/ansible-lint-orb-source
+      - prepare-ci-evidence:
+          source-directory: /tmp/ansible-lint-orb-source
       - run:
           name: Checkout test repo
           command: |
             git clone https://github.com/ansible-playbooks-mamono210/wordpress_install.git .
+            python3 /tmp/ansible-lint-ci-evidence/record-evidence.py worktree
       - ansible-lint/execute:
           molecule-playbook-test: true
+      - collect-ci-evidence
   role-test:
     executor: ansible-lint/default
     steps:
       - checkout
+      - prepare-ci-evidence:
+          source-directory: .
       - run:
           name: Prepare Ansible role files
           command: |
@@ -42,8 +77,10 @@ jobs:
             mv test_resources/meta .
             mv test_resources/molecule .
             mv test_resources/tasks .
+            python3 /tmp/ansible-lint-ci-evidence/record-evidence.py worktree
       - ansible-lint/execute:
           molecule-role-test: true
+      - collect-ci-evidence
 workflows:
   test-deploy:
     jobs:
