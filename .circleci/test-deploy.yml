@@ -1,8 +1,9 @@
 ---
 version: 2.1
 orbs:
-  ansible-lint: orbss/ansible-lint@dev:<<pipeline.git.revision>>
-  orb-tools: circleci/orb-tools@11.1
+  # orb-tools/continue injects the packed Orb as "ansible-lint" here.
+  # Validate the injected config, not this template on its own.
+  orb-tools: circleci/orb-tools@12.5.0
 
 filters: &filters
   tags:
@@ -53,17 +54,23 @@ workflows:
       - role-test:
           filters: *filters
       - orb-tools/pack:
+          # This workflow creates its own workspace for production publish.
+          # #5501 will inspect this job's archive in post-steps as well.
           filters: *filters
       - orb-tools/publish:
-          orb-name: orbss/ansible-lint
-          vcs-type: << pipeline.project.type >>
-          pub-type: production
+          orb_name: orbss/ansible-lint
+          vcs_type: << pipeline.project.type >>
+          pub_type: production
+          circleci_token: CIRCLE_TOKEN
+          enable_pr_comment: false
           requires:
             - orb-tools/pack
             - playbook-test
             - resource-class-test
             - role-test
-          context: <publishing-context>
+          # Confirm this project's access and CIRCLE_TOKEN publishing scope.
+          # Only production publish uses this context.
+          context: CIRCLECI_ORBS
           filters:
             branches:
               ignore: /.*/

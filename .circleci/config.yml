@@ -2,7 +2,7 @@
 version: 2.1
 setup: true
 orbs:
-  orb-tools: circleci/orb-tools@11.1
+  orb-tools: circleci/orb-tools@12.5.0
   shellcheck: circleci/shellcheck@3.1
 
 filters: &filters
@@ -15,22 +15,28 @@ workflows:
       - orb-tools/lint:
           filters: *filters
       - orb-tools/pack:
+          # #5501 will inspect dist/orb_source.tar.gz in post-steps.
+          # With persist_to_workspace enabled, dist/orb.yml is archived.
           filters: *filters
       - orb-tools/review:
+          orb_name: ansible-lint
+          # Keep the public kebab-case parameters compatible in 1.0.0.
+          # Remove RC010 after the public API is snake_cased in 2.0.0.
+          exclude: RC010
           filters: *filters
       - shellcheck/check:
           exclude: SC2196
           filters: *filters
-      - orb-tools/publish:
-          orb-name: orbss/ansible-lint
-          vcs-type: << pipeline.project.type >>
-          requires:
-            [orb-tools/lint, orb-tools/review, orb-tools/pack, shellcheck/check]
-          context: CIRCLECI_ORBS
-          filters: *filters
-      # Triggers the next workflow in the Orb Development Kit.
+      # Inject this commit's packed Orb; no dev publish or publishing context.
       - orb-tools/continue:
-          pipeline-number: << pipeline.number >>
-          vcs-type: << pipeline.project.type >>
-          requires: [orb-tools/publish]
+          pipeline_number: << pipeline.number >>
+          vcs_type: << pipeline.project.type >>
+          orb_name: ansible-lint
+          inject_orb: true
+          config_path: .circleci/test-deploy.yml
+          requires:
+            - orb-tools/lint
+            - orb-tools/review
+            - orb-tools/pack
+            - shellcheck/check
           filters: *filters
