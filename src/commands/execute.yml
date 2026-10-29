@@ -4,11 +4,15 @@ description: >
 
 parameters:
   molecule-role-test:
-    description:
+    description: >
+      Install the current repository at CIRCLE_SHA1 as an Ansible role before
+      linting. Molecule requirements are installed independently of this flag.
     default: false
     type: boolean
   molecule-playbook-test:
-    description:
+    description: >
+      Install roles from roles/requirements.yml before linting.
+      Molecule requirements are installed independently of this flag.
     default: false
     type: boolean
 

@@ -5,9 +5,15 @@ docker:
 resource_class: '<<parameters.resource_class>>'
 parameters:
   image:
+    description: >
+      Docker image used to run execute. It must provide ansible-lint, ansible,
+      ansible-community, ansible-galaxy, and Bash. Specify a digest to pin its
+      contents.
     default: ghcr.io/docker-images-mamono210/circleci-executors/ansible-lint:latest
     type: string
   resource_class:
+    description: >
+      CircleCI resource class for this Docker executor.
     default: "small"
     enum: ["small", "medium", "medium+", "large"]
     type: enum
