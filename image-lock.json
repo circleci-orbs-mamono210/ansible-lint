@@ -54,7 +54,13 @@
     "published_source_reference_matches": true,
     "handoff_ticket": 5500,
     "handoff_journal_id": 11078,
-    "historical_image_reconstruction": false
+    "historical_image_reconstruction": false,
+    "runtime_measurement_reuse": {
+      "source_record": "circleci_runtime_verification.canonical_version_measurement",
+      "source_job_number": 424,
+      "same_manifest_digest_and_platform": true,
+      "reason": "Selected and comparison images have the same recorded manifest digest and linux/amd64 platform. Reuse is limited to those recorded image identities."
+    }
   },
   "observed_versions": {
     "python": "3.14.10",
@@ -98,7 +104,8 @@
     ],
     "package_metadata_crosscheck": "All three distributions loaded from the verified image userspace and agree with command output.",
     "limitation": "Host kernel and account context are used; this verifies version reporting from image binaries/packages, not Docker executor integration or the exact container runtime.",
-    "docker_runtime_confirmation_required": true
+    "docker_runtime_confirmation_required": false,
+    "runtime_confirmation_record": "circleci_runtime_verification"
   },
   "registry_pull": {
     "method": "OCI Distribution API, exact manifest digest and all compressed layer SHA-256/size checks",
@@ -149,21 +156,308 @@
       "scope": "Before the digest-pinning change; full manifest digest not present in log. Not acceptance evidence for the candidate."
     }
   ],
+  "circleci_runtime_verification": {
+    "verified_commit": "1f375e050aab7990836638c4e1fc58aae93d2d3e",
+    "container_execution": true,
+    "method": "Four version commands ran inside the pinned CircleCI Docker executor. Full image reference and actual pull were cross-checked with the same jobs' Spin up environment logs.",
+    "image_reference": "ghcr.io/docker-images-mamono210/circleci-executors/ansible-lint@sha256:3dd0b103851b24ea8796af7126fff4340023a6288293030ae65b01f0446a9fdf",
+    "manifest_digest": "sha256:3dd0b103851b24ea8796af7126fff4340023a6288293030ae65b01f0446a9fdf",
+    "platform": "linux/amd64",
+    "canonical_version_measurement": {
+      "source_job_number": 424,
+      "observed_versions": {
+        "python": "3.14.10",
+        "ansible": "14.5.0",
+        "ansible_core": "2.21.5",
+        "ansible_lint": "26.10.1"
+      },
+      "output_normalization": "ANSI color escape sequences removed; original outputs are preserved in the hashed versions.json artifact.",
+      "commands": [
+        {
+          "command": [
+            "python3",
+            "--version"
+          ],
+          "observed_at": "2026-10-29T13:32:22.085289+00:00",
+          "exit_code": 0,
+          "stdout": "Python 3.14.10\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "ansible-community",
+            "--version"
+          ],
+          "observed_at": "2026-10-29T13:32:22.375763+00:00",
+          "exit_code": 0,
+          "stdout": "Ansible community version 14.5.0\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "ansible",
+            "--version"
+          ],
+          "observed_at": "2026-10-29T13:32:23.616077+00:00",
+          "exit_code": 0,
+          "stdout": "ansible [core 2.21.5]\n  config file = None\n  configured module search path = ['/home/circleci/.ansible/plugins/modules', '/usr/share/ansible/plugins/modules']\n  ansible python module location = /home/circleci/.local/lib/python3.14/site-packages/ansible\n  ansible collection location = /home/circleci/.ansible/collections:/usr/share/ansible/collections\n  executable location = /home/circleci/.local/bin/ansible\n  python version = 3.14.10 (main, Oct 28 2026, 01:59:47) [GCC 14.2.0] (/usr/local/bin/python3.14)\n  jinja version = 3.1.6\n  pyyaml version = 6.0.3 (with libyaml v0.2.5)\n",
+          "stderr": ""
+        },
+        {
+          "command": [
+            "ansible-lint",
+            "--version"
+          ],
+          "observed_at": "2026-10-29T13:32:25.854813+00:00",
+          "exit_code": 0,
+          "stdout": "ansible-lint 26.10.1 using ansible-core:2.21.5 ansible-compat:26.10.0 ruamel-yaml:0.19.1\n",
+          "stderr": ""
+        }
+      ]
+    },
+    "jobs": [
+      {
+        "job": "role-test",
+        "job_number": 424,
+        "job_url": "https://circleci.com/gh/circleci-orbs-mamono210/ansible-lint/424",
+        "revision": "1f375e050aab7990836638c4e1fc58aae93d2d3e",
+        "branch": "5499-ci-evidence",
+        "resource_class": "small",
+        "executor_type": "docker",
+        "observed_platform": "linux/amd64",
+        "started_at": "2026-10-29T13:32:08.354Z",
+        "stopped_at": "2026-10-29T13:32:47.759Z",
+        "result": "success",
+        "full_image_reference_verified_in": "Spin up environment",
+        "image_pull": "Downloaded the pinned image successfully in this job.",
+        "version_commands_exit_codes": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "observed_versions": {
+          "python": "3.14.10",
+          "ansible": "14.5.0",
+          "ansible_core": "2.21.5",
+          "ansible_lint": "26.10.1"
+        },
+        "artifact_directory": "image-and-repository-evidence",
+        "evidence_bundle_directory": "verification/ci/424",
+        "evidence_sha256": {
+          "context.json": "f2e3a0937a18895f4dbfa1df53ba464cf362765d8e55791972125d0082d0ad3d",
+          "job.json": "aa5a54ba135dce7a05529f0c808965d83ffe830f992a70b646d8cc4b1357f746",
+          "package-versions.json": "0b2b91b19aa2c8c3c48f309e38f59cfc375c07b1d11bffd617677203b56a82a8",
+          "repositories.jsonl": "d5545d6790f9c53a83004019dfaa0049bf4d4b02c53e8170a65dbb669091c91e",
+          "spin-up-environment.log": "ffb52f4e4c04233866c73570fb41be5def57cbff108db5baabd8841a6f74f70e",
+          "versions.json": "2f52f7be4752d985836e2220ee133b386b7a57b792099fef504dc8d00bcb8e02"
+        }
+      },
+      {
+        "job": "playbook-test",
+        "job_number": 425,
+        "job_url": "https://circleci.com/gh/circleci-orbs-mamono210/ansible-lint/425",
+        "revision": "1f375e050aab7990836638c4e1fc58aae93d2d3e",
+        "branch": "5499-ci-evidence",
+        "resource_class": "small",
+        "executor_type": "docker",
+        "observed_platform": "linux/amd64",
+        "started_at": "2026-10-29T13:32:08.182Z",
+        "stopped_at": "2026-10-29T13:33:08.986Z",
+        "result": "success",
+        "full_image_reference_verified_in": "Spin up environment",
+        "image_pull": "Downloaded the pinned image successfully in this job.",
+        "version_commands_exit_codes": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "observed_versions": {
+          "python": "3.14.10",
+          "ansible": "14.5.0",
+          "ansible_core": "2.21.5",
+          "ansible_lint": "26.10.1"
+        },
+        "artifact_directory": "image-and-repository-evidence",
+        "evidence_bundle_directory": "verification/ci/425",
+        "evidence_sha256": {
+          "context.json": "be504021d848fb3a9f7be24ceb1d3996263a2fc939cfea98834954bfd29a473f",
+          "job.json": "c2812e74068933bbd9f3d2ad0c40ed749bba17ed0fd223f5d3396e2d0ed0714e",
+          "package-versions.json": "0b2b91b19aa2c8c3c48f309e38f59cfc375c07b1d11bffd617677203b56a82a8",
+          "repositories.jsonl": "d22c587a2d32620118ea16a2ff0d29b300144d9701d794e5999140d319ee0a3c",
+          "spin-up-environment.log": "09dc8203f3018323498f24ad9077907aa426ea071cbf487a5fe1d984bbe7d5b5",
+          "versions.json": "0302185e6b4feeec23448506033a7d28121b8d91c9d8fc308f15ceddcc689c85"
+        }
+      },
+      {
+        "job": "resource-class-test",
+        "job_number": 423,
+        "job_url": "https://circleci.com/gh/circleci-orbs-mamono210/ansible-lint/423",
+        "revision": "1f375e050aab7990836638c4e1fc58aae93d2d3e",
+        "branch": "5499-ci-evidence",
+        "resource_class": "medium",
+        "executor_type": "docker",
+        "observed_platform": "linux/amd64",
+        "started_at": "2026-10-29T13:32:08.267Z",
+        "stopped_at": "2026-10-29T13:33:17.702Z",
+        "result": "success",
+        "full_image_reference_verified_in": "Spin up environment",
+        "image_pull": "Downloaded the pinned image successfully in this job.",
+        "version_commands_exit_codes": [
+          0,
+          0,
+          0,
+          0
+        ],
+        "observed_versions": {
+          "python": "3.14.10",
+          "ansible": "14.5.0",
+          "ansible_core": "2.21.5",
+          "ansible_lint": "26.10.1"
+        },
+        "artifact_directory": "image-and-repository-evidence",
+        "evidence_bundle_directory": "verification/ci/423",
+        "evidence_sha256": {
+          "context.json": "4713a3aad5c5d15fb7918fd6dcabba2882a64e0cf56141a185a68031b0e1f340",
+          "job.json": "49e62d67785d41222df0c05074e3d58eb8d133ebde46312d425ded09a11572db",
+          "package-versions.json": "0b2b91b19aa2c8c3c48f309e38f59cfc375c07b1d11bffd617677203b56a82a8",
+          "repositories.jsonl": "a0aa0e591de1043f320d28481379abdbfb94eacba17994c9202cd1d7d95807b8",
+          "spin-up-environment.log": "d4b983c5f766e8981d43b89167736f1bc3285c01df0b2bbb81d0987762673808",
+          "versions.json": "028bd4ca2406e68202036b594a6b3002b9c108126f912a7bd2b2b59cfcf8b73e"
+        }
+      }
+    ],
+    "external_repositories": [
+      {
+        "repository": "https://github.com/ansible-playbooks-mamono210/wordpress_install",
+        "commit": "2279a58ab3ef46d8922f8cebea1348cd44dd1c40",
+        "tree": "7c47b8c35b9480024bbe802e34b7cc082458deb6",
+        "kind": "integration-test-worktree",
+        "observed_in_jobs": [
+          425,
+          423
+        ]
+      },
+      {
+        "repository": "https://github.com/ansible-roles-mamono210/epel",
+        "commit": "747af654d2a2e05c1cfabce9c0b79b2a1eae3650",
+        "tree": "e50a8f6d8d9303f6a64b7cf3ec29de08186b65e7",
+        "kind": "installed-role-archive",
+        "archive_sha256": "7c935a0107f599b3ff61708e90f835c24ed31ccbe27bffc4edcc76aeeddad228",
+        "observed_in_jobs": [
+          424,
+          425,
+          423
+        ]
+      },
+      {
+        "repository": "https://github.com/ansible-roles-mamono210/httpd_install",
+        "commit": "5cc31392e2cd174395c94c2ff05fffc6136b76f9",
+        "tree": "b8369a6861b497e66003f1e19645007b0c2a87e1",
+        "kind": "installed-role-archive",
+        "archive_sha256": "cab87b85f622b525a013bfabeef6aff257eb12459eeac1b5acaff6b4ca16914e",
+        "observed_in_jobs": [
+          425,
+          423
+        ]
+      },
+      {
+        "repository": "https://github.com/ansible-roles-mamono210/mariadb_create_db",
+        "commit": "2c4cc9a579e94d1f75a464c09495019b02492bfd",
+        "tree": "7eae4b0e4e02021f260b97de4c0b45ce0a580988",
+        "kind": "installed-role-archive",
+        "archive_sha256": "2cca2ce0640c910ce2c094c76a88b0235a5e4770786deaedb7581f16590d827b",
+        "observed_in_jobs": [
+          425,
+          423
+        ]
+      },
+      {
+        "repository": "https://github.com/ansible-roles-mamono210/mariadb_install",
+        "commit": "79b2f730147bd853efa61ee5bf17e5314bc0816b",
+        "tree": "a3cdcfde3be6b6a6eea1ba23c64d9fd7dd8df07a",
+        "kind": "installed-role-archive",
+        "archive_sha256": "87b1e1958bf076e3fc41a186692834c09ca58b97bc24931b0a5b9d0be8343c04",
+        "observed_in_jobs": [
+          425,
+          423
+        ]
+      },
+      {
+        "repository": "https://github.com/ansible-roles-mamono210/molecule_ec2_driver",
+        "commit": "a94c195372aac9a3386d0e49ad8fbb73cdafe5b3",
+        "tree": "2cd0cde307b0db3bc17c2932b6eed275ab1dd392",
+        "kind": "installed-role-archive",
+        "archive_sha256": "4b8ad1845e8fe42d204323598ba3e52918c9b90cedc47af501709f55d6fd3858",
+        "observed_in_jobs": [
+          425,
+          423
+        ]
+      },
+      {
+        "repository": "https://github.com/ansible-roles-mamono210/php",
+        "commit": "813a193094ee5b6df283cc967ea603ee712df189",
+        "tree": "f74df391864ea91e60752ffb9a175926b0e967db",
+        "kind": "installed-role-archive",
+        "archive_sha256": "563b28a80187581b9f2dbcd14df2009d3dee16b97a56b17f59582cef2c41b575",
+        "observed_in_jobs": [
+          425,
+          423
+        ]
+      },
+      {
+        "repository": "https://github.com/ansible-roles-mamono210/remi",
+        "commit": "576c00542cce634d411733073164cdd797cbc6d2",
+        "tree": "6136ff5f69da949e7de10bfd2ad266d7b9b1cc66",
+        "kind": "installed-role-archive",
+        "archive_sha256": "8356d55c8dde032828652eb8a6a9e19d008f2440d728f469af98d6dcd1e73a2d",
+        "observed_in_jobs": [
+          425,
+          423
+        ]
+      },
+      {
+        "repository": "https://github.com/ansible-roles-mamono210/wordpress_install",
+        "commit": "9021bd64630d14ebbfde962a2ffa8166d2939719",
+        "tree": "ae54c17b43a3b42ca263261db354d4d2ffc30f81",
+        "kind": "installed-role-archive",
+        "archive_sha256": "cecf4a453a213a0a366a5727b829f03ec22ef35f2979c2dcff89bc648d79f3b6",
+        "observed_in_jobs": [
+          425,
+          423
+        ]
+      },
+      {
+        "repository": "https://github.com/ansible-roles-mamono210/wp_cli",
+        "commit": "0b2f31dcb0cebdac34a392b54c986e652b739274",
+        "tree": "d94f7737e485229bde30e2f8623d8e587fade215",
+        "kind": "installed-role-archive",
+        "archive_sha256": "1301f1997ddd7218749edee87525a314fbd8b8ce53f63468b4ca2d63097374f2",
+        "observed_in_jobs": [
+          425,
+          423
+        ]
+      }
+    ],
+    "external_repository_scope": "Observed test worktree and Git archives actually used in these jobs. Repeated archives of the same commit are deduplicated here; all events remain in repositories.jsonl. These references are evidence, not dependency pins.",
+    "limitations": [
+      "The initial native userspace measurement in the measurement field remains a historical non-container observation.",
+      "This record does not reconstruct the image used by historical orbss/ansible-lint@0.0.3 runs.",
+      "External roles, networks and inputs are not guaranteed reproducible. Existing yamllint-configuration warnings were present, although all three lint jobs succeeded."
+    ]
+  },
   "acceptance": {
-    "fixed_reference_circleci_run": "pending_after_patch_is_committed_and_pushed",
-    "docker_version_check": "pending; use verification/verify-image.sh from the ZIP",
+    "fixed_reference_circleci_run": "passed",
+    "docker_version_check": "passed_in_circleci_docker_executor",
     "required_jobs": [
       "role-test",
       "playbook-test",
       "resource-class-test"
     ],
-    "evidence_needed": [
-      "candidate commit and job URLs",
-      "full pinned manifest reference and actual platform",
-      "four version outputs from the container",
-      "external repository revisions/reachability when integration tests retrieve them"
-    ],
-    "not_a_ticket_completion_record": true
+    "not_a_ticket_completion_record": true,
+    "evidence_record": "circleci_runtime_verification",
+    "scope": "Runtime validation evidence. Ticket verification and the README handoff are tracked separately in Redmine."
   },
   "evidence_bundle": {
     "name": "ansible-lint-5499.zip",
@@ -190,5 +484,11 @@
     "versioning": "minor when the public call/execution contract is preserved; major for incompatible changes, including same-tag rebuilds.",
     "guarantee": "The digest pins image content for linux/amd64. External roles, networks and input files are not pinned by this record.",
     "initial_readme_owner": 5502
+  },
+  "runtime_evidence_bundle": {
+    "name": "ansible-lint-5499-image-lock.zip",
+    "directory": "verification/ci",
+    "source": "Public CircleCI job artifacts and sanitized API/log extracts for jobs 423, 424 and 425.",
+    "reviewed_at": "2026-10-29T22:45:10+09:00"
   }
 }
