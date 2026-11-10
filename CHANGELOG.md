@@ -7,10 +7,7 @@ with the compatibility and image-update policy in [README.md](README.md).
 
 ## [Unreleased]
 
-## [1.0.0] - Unreleased
-
-This entry describes the prepared 1.0.0 release. Its release date and tag links
-must be finalized during publication; it is not a publication record.
+## [1.0.0] - 2026-11-10
 
 ### Added
 
