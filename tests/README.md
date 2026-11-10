@@ -9,7 +9,7 @@ packed Orb, injected by orb-tools 12.5.0. Only production publish receives
 | `normal-test` | `tests/fixtures/normal/playbook.yml` | Both default to false | Exactly one Ansible file processed, zero failures/warnings, exit 0; no dependency install |
 | `role-test` | `test_resources/` | `molecule-role-test: true` | Install this repository at `CIRCLE_SHA1`, then the fixed Molecule dependency; lint succeeds |
 | `playbook-test` | `tests/fixtures/playbook/` | `molecule-playbook-test: true` | Install both requirements files, verify both distinct role names/revisions; lint succeeds |
-| `negative-test` | `tests/fixtures/negative/playbook.yml` | Both default to false | Real exit 2, exactly one `name[missing]` at `playbook.yml:6`; no other diagnostics |
+| `negative-test` | `tests/fixtures/negative/playbook.yml` | Both default to false | Real exit 2, exactly one `name[missing]` at `playbook.yml:6`; only the separately recorded notices below may accompany it |
 | `resource-class-test` | Playbook fixture | Playbook flag, executor `resource_class: medium` | Same dependency assertions and successful lint in the explicit resource class |
 | `custom-image-test` | Playbook fixture | Playbook flag, explicit separate image digest | Required executables/versions, both dependency installs and successful lint |
 
@@ -63,10 +63,29 @@ failure/file/profile summary. The exact two-line Python 3.14.10 HTTP-304 cleanup
 is separately classified when present once. ansible-lint's schema updater treats
 HTTP 304 as unchanged; Python warns while closing that response during garbage
 collection. The original output is retained and `verification.json` records the
-notice ID, count and text. Both complete output forms (with/without this notice)
-are checked. Other HTTP statuses, warnings, partial/repeated notices, extra
-errors or files are rejected. No warning suppression or linter environment
-change is used.
+notice ID, count and text.
+
+CI [#492](https://circleci.com/gh/circleci-orbs-mamono210/ansible-lint/492), on
+`85d8f99fa76ad792b99b909736a37c717c9766a3`, retained the same fixture, real exit 2
+and one expected finding, but also emitted two additional stderr lines:
+
+- `<unknown>:1: SyntaxWarning: invalid decimal literal`. Only that exact line
+  is classified, at most once, alongside the complete expected lint result.
+  Its internal emitting call site has not been established; a local run using
+  extracted image Python/packages did not reproduce it. This narrow observation
+  does not establish that SyntaxWarning generally is harmless.
+- The ansible-lint new-release announcement. The observer accepts only the known
+  complete format, from the measured `26.10.1` to a newer numeric stable version,
+  with the exact `pip3 install --user --upgrade ansible-lint` instruction.
+  This records a notice; it never executes that instruction or changes the image.
+  A pinned binary can query the latest-release service, so notification text can
+  change while the image digest remains fixed.
+
+Each of these three notices is independently optional and recorded with its ID,
+count and original normalized text. Every required lint-summary line remains
+mandatory. Other HTTP statuses, warning locations/messages, partial/repeated
+notices, multiple release announcements, extra errors or files are rejected.
+No warning suppression or linter argument/environment change is used.
 Only ANSI SGR colours, OSC-8 hyperlink delimiters, blank lines, surrounding
 whitespace and display order are normalized. Unknown terminal controls fail.
 Counts are retained, so duplicate violations cannot disappear during comparison.

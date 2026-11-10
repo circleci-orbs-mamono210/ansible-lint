@@ -25,6 +25,18 @@
     "ansible_lint": "26.10.1",
     "method": "verified extracted image userspace, no container; CircleCI confirmation is required"
   },
+  "optional_stderr_notices": [
+    {
+      "id": "python314-invalid-decimal-literal-observed",
+      "lines": [
+        "<unknown>:1: SyntaxWarning: invalid decimal literal"
+      ],
+      "classification": "Exact runtime warning observed in the unchanged negative fixture on CI #492, separately recorded from lint findings. Its internal emitting call site is unconfirmed.",
+      "observed_job": "https://circleci.com/gh/circleci-orbs-mamono210/ansible-lint/492",
+      "observed_commit": "85d8f99fa76ad792b99b909736a37c717c9766a3",
+      "scope": "Only this complete line at most once, with the pinned image, exit 2 and the complete expected one-finding output. Other locations, messages, warning types, duplicates and additional errors are rejected. This does not classify SyntaxWarning generally as harmless."
+    }
+  ],
   "optional_stderr_notice": {
     "id": "python314-http304-cleanup",
     "lines": [

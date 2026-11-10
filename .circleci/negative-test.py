@@ -40,14 +40,35 @@ def assess(code, stdout, stderr, expected):
         raise ValueError("Unexpected stdout diagnostic or unclassified line")
     actual = lines(stderr)
     baseline = Counter(expected["stderr_lines"])
-    if actual == baseline:
-        return []
-    # Classify a complete, observed informational notice; do not suppress warnings
-    # or discard diagnostics during normalization. Every line/count still matches.
-    notice = expected["optional_stderr_notice"]
-    if actual == baseline + Counter(notice["lines"]):
-        return [{"id": notice["id"], "count": 1, "lines": notice["lines"]}]
-    raise ValueError("Unexpected stderr diagnostic or unclassified line")
+    if not actual >= baseline:
+        raise ValueError("Missing expected stderr diagnostic")
+    remaining = actual - baseline
+    notices = []
+    # Keep exact, complete, independently optional observations. Subtract each
+    # only once: partial/duplicate notices and other diagnostics still fail.
+    for notice in [expected["optional_stderr_notice"],
+                   *expected.get("optional_stderr_notices", [])]:
+        block = Counter(notice["lines"])
+        if remaining >= block:
+            remaining.subtract(block)
+            notices.append({"id": notice["id"], "count": 1, "lines": notice["lines"]})
+    # A pinned binary still queries releases/latest. Permit only its known
+    # announcement format, from the measured version to a newer stable version.
+    current = expected["measurement"]["ansible_lint"]
+    upgrade = re.compile(
+        r"A new release of ansible-lint is available: " + re.escape(current) +
+        r" → (0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)"
+        r" Upgrade by running: pip3 install --user --upgrade ansible-lint"
+    )
+    for line, count in list(remaining.items()):
+        match = upgrade.fullmatch(line)
+        if count and match and tuple(map(int, match.groups())) > tuple(map(int, current.split("."))):
+            remaining.subtract({line: 1})
+            notices.append({"id": "ansible-lint-new-release", "count": 1, "lines": [line]})
+            break
+    if any(remaining.values()):
+        raise ValueError("Unexpected stderr diagnostic or unclassified line")
+    return notices
 
 
 def prepare(expected_path, evidence):
