@@ -1,0 +1,96 @@
+version: 2.1
+description: |
+    Run Ansible lint against the working directory with a Docker executor whose default image is pinned by digest. Supports optional Ansible role installation and installation of Molecule requirements before linting.
+display:
+    home_url: https://circleci.com/developer/orbs/orb/orbss/ansible-lint
+    source_url: https://github.com/circleci-orbs-mamono210/ansible-lint
+commands:
+    execute:
+        description: |
+            Execute Ansible lint
+        parameters:
+            molecule-playbook-test:
+                default: false
+                description: |
+                    Install roles from roles/requirements.yml before linting. Molecule requirements are installed independently of this flag.
+                type: boolean
+            molecule-role-test:
+                default: false
+                description: |
+                    Install the current repository at CIRCLE_SHA1 as an Ansible role before linting. Molecule requirements are installed independently of this flag.
+                type: boolean
+        steps:
+            - run:
+                command: |
+                    ansible-lint --version
+                name: Show Ansible lint version
+            - run:
+                command: |
+                    ansible --version
+                    ansible-community --version
+                name: Show Ansible version
+            - run:
+                command: |
+                    #!/bin/bash
+                    if [ "$PARAM_MOLECULE_ROLE_TEST" = 1 ]; then
+                        ansible-galaxy install "git+${CIRCLE_REPOSITORY_URL},${CIRCLE_SHA1}"
+                    fi
+
+                    if [ "$PARAM_MOLECULE_PLAYBOOK_TEST" = 1 ]; then
+                        ansible-galaxy install -r roles/requirements.yml
+                    fi
+
+                    while IFS= read -r -d '' directory
+                    do
+                        if [[ $directory =~ molecule/.*/requirements.yml ]]; then
+                            ansible-galaxy install -r "$directory"
+                        fi
+                    done <  <(find molecule/* -maxdepth 1 -print0)
+                environment:
+                    PARAM_MOLECULE_PLAYBOOK_TEST: << parameters.molecule-playbook-test >>
+                    PARAM_MOLECULE_ROLE_TEST: << parameters.molecule-role-test >>
+                name: Install the role and dependent roles for Molecule tests
+            - run:
+                command: ansible-lint
+                name: Execute Ansible lint
+executors:
+    default:
+        description: CircleCI executor Ansible lint
+        docker:
+            - image: <<parameters.image>>
+        parameters:
+            image:
+                default: ghcr.io/docker-images-mamono210/circleci-executors/ansible-lint@sha256:3dd0b103851b24ea8796af7126fff4340023a6288293030ae65b01f0446a9fdf
+                description: |
+                    Docker image used to run execute. It must provide ansible-lint, ansible, ansible-community, ansible-galaxy, and Bash. Specify a digest to pin its contents.
+                type: string
+            resource_class:
+                default: small
+                description: |
+                    CircleCI resource class for this Docker executor.
+                enum:
+                    - small
+                    - medium
+                    - medium+
+                    - large
+                type: enum
+        resource_class: <<parameters.resource_class>>
+examples:
+    example:
+        description: Execute Ansible lint
+        usage:
+            version: "2.1"
+            orbs:
+                ansible-lint: orbss/ansible-lint@1.0.0
+            jobs:
+                execute-ansible-lint:
+                    executor: ansible-lint/default
+                    steps:
+                        - checkout
+                        - ansible-lint/execute:
+                            molecule-role-test: true
+            workflows:
+                use-my-orb:
+                    jobs:
+                        - execute-ansible-lint
+

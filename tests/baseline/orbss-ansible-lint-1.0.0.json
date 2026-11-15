@@ -1,0 +1,54 @@
+{
+  "record_version": 1,
+  "ticket": 5535,
+  "purpose": "Identity record of the published orbss/ansible-lint@1.0.0 source. It is the comparison baseline for the unchanged default executor and execute command. The contract is docs/python-install-contract.md.",
+  "orb": "orbss/ansible-lint",
+  "version": "1.0.0",
+  "registry": {
+    "version_id": "8e93a6ed-6018-4475-8be7-75a6c52693b4",
+    "published_at": "2026-11-10T13:48:23.009Z"
+  },
+  "git": {
+    "tag": "v1.0.0",
+    "tag_type": "lightweight",
+    "commit": "11e4054185ab52907cdb855d37d05694f8ba1318",
+    "repository_tree": "e918a4908e0e37d403e982781092f085cd67b445",
+    "orb_source_tree": "895c9f12cf8f60c2bbfeeca526270b178c9a1852"
+  },
+  "expected": {
+    "size_bytes": 4033,
+    "sha256": "d05c1fbad47421bbb239d2fe670039936445c493ebfff78f7fa2073285b124bb",
+    "value_sources": [
+      "Redmine #5503 journal 11186 (v1.0.0 publication record)",
+      "Redmine project 319 Wiki 110_ロードマップ version 1, design principle 1"
+    ],
+    "note": "The injection and publication packs of the v1.0.0 tag pipeline had the same packed SHA-256 (#5503 journal 11186)."
+  },
+  "stored_copy": {
+    "path": "tests/baseline/orbss-ansible-lint-1.0.0.yml",
+    "size_bytes": 4033,
+    "sha256": "d05c1fbad47421bbb239d2fe670039936445c493ebfff78f7fa2073285b124bb",
+    "content": "The exact registry source bytes. No normalization, reformatting, or added newline."
+  },
+  "retrieval": {
+    "saved_at": "2026-11-15T17:09:58+09:00",
+    "source": "CircleCI orb registry: the source of orbss/ansible-lint@1.0.0",
+    "method": "CircleCI MCP server tool get_orb_source with orb reference orbss/ansible-lint@1.0.0. The JSON response was saved to a file, and its source string was decoded and written as UTF-8 bytes without other changes.",
+    "verification": "The stored copy's size and SHA-256 equal the expected values.",
+    "not_used": [
+      "repacking src/ with any CLI version",
+      "copying a CI pack artifact",
+      "editing the retrieved text"
+    ],
+    "reproduction": "Any retrieval method is acceptable when the resulting bytes have the expected size and SHA-256. Tools that print a source can add or remove a trailing newline, so verify before use."
+  },
+  "ci_reference": {
+    "applies_to": "1.1.0 release candidates, which must not differ from this baseline (contract section 5.4). Later releases use the previous published version as the baseline, with adopted expected differences (contract section 5.6).",
+    "owner": "Redmine #5538",
+    "rule": "Read stored_copy.path from the checked-out candidate commit. Verify its size and SHA-256 against expected before every parse or comparison. A missing, unreadable, or mismatching file fails the check. Never replace the file or the expected values automatically.",
+    "comparison_targets": [
+      "executors.default",
+      "commands.execute"
+    ]
+  }
+}

@@ -61,6 +61,14 @@ The [source example](src/examples/example.yml) shows the role-repository case.
 
 The API source is [src/](src/). No reusable jobs are exported.
 
+A `python` executor and an `install` command are planned for 1.1.0. They are
+not part of 1.0.0 and cannot be used until 1.1.0 is published. Their detailed
+contract is [docs/python-install-contract.md](docs/python-install-contract.md).
+That contract also records the published 1.0.0 `default` and `execute`
+definitions that 1.1.0 must keep unchanged. `src/` holds the implemented API
+definitions, this README explains usage, and the contract holds the detailed
+rules of the new path.
+
 ### Executor: `ansible-lint/default`
 
 | Parameter | Type | Default | Meaning |
