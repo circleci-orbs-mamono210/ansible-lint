@@ -256,7 +256,7 @@ image pinned by digest (decision 02).
 
 | Parameter | Type | Default |
 | --- | --- | --- |
-| `image` | string | The verified `cimg/python` digest reference, in the form `cimg/python@sha256:<digest>`. The exact value is **TBD** by #5536. |
+| `image` | string | `cimg/python@sha256:1e39aeaaf097598f60e55e42ee57289448a97dea346a9c8f53e3af70b50ac7db`: the linux/amd64 image manifest of tag `3.14.10`, selected by #5536. The selection record is `python-image-lock.json`. |
 | `resource_class` | enum `small`, `medium`, `medium+`, `large` | `small` |
 
 - `resource_class` has the same type, values, default, and spelling as
@@ -363,8 +363,9 @@ lines. `install` never installs Python or OS packages and never needs sudo.
   digest if any, platform, tag at selection, resolution time, verified
   interpreter path and version, pip version, Bash and Git availability, the
   virtual environment check, and evidence (commit and job URLs).
-- #5536 creates the record file and chooses its name. It is separate from
-  `image-lock.json`, which stays the record of the existing GHCR image.
+- The record file is `python-image-lock.json`, created by #5536. It is
+  separate from `image-lock.json`, which stays the record of the existing GHCR
+  image.
 - At 1.1.0 the list is expected to have one entry: the default image of
   `python`. Other images are added only under section 7.5.
 
@@ -377,7 +378,7 @@ section (decision 03). Such a job is supported like the `python` executor.
 jobs:
   lint:
     docker:
-      - image: cimg/python@sha256:<verified digest, TBD by #5536>
+      - image: cimg/python@sha256:1e39aeaaf097598f60e55e42ee57289448a97dea346a9c8f53e3af70b50ac7db
     steps:
       - checkout
       - ansible-lint/install
@@ -910,8 +911,8 @@ change any proposal before adoption.
 
 | Value | Filled by | Recorded in | First candidate |
 | --- | --- | --- | --- |
-| `cimg/python` digest, tag at selection, platform, index and manifest mapping, resolution time | #5536 | Verified image record; section 6.1 of this document | The image for Python 3.14.10 |
-| Interpreter path and version, pip version, virtual environment check, Bash, Git | #5536 | Verified image record | Python 3.14.10 |
+| `cimg/python` digest, tag at selection, platform, index and manifest mapping, resolution time | #5536 | `python-image-lock.json`; section 6.1 of this document | The image for Python 3.14.10 |
+| Interpreter path and version, pip version, virtual environment check, Bash, Git | #5536 | `python-image-lock.json` | Python 3.14.10 |
 | Default value of `python.image` | #5536 | `src/executors/python.yml`; section 6.1 | The digest above |
 | Fixed set, including all transitive dependencies | #5537 | Fixed information in the Orb; its record | ansible-lint 26.10.1, Ansible package 14.5.0, ansible-core 2.21.5 |
 | Bootstrap distributions of the verified interpreter | #5537 | Fixed information | None |

@@ -1,0 +1,23 @@
+---
+description: >
+  CircleCI cimg/python Docker executor pinned by digest. It does not contain
+  ansible-lint. Run install before execute.
+docker:
+  - image: '<<parameters.image>>'
+resource_class: '<<parameters.resource_class>>'
+parameters:
+  image:
+    description: >
+      Docker image used by this executor. The default is a verified cimg/python
+      digest. You can override it, but only verified images are supported. A
+      tag alone does not pin the contents.
+    # Selection record and measured prerequisites: python-image-lock.json.
+    # Tag at selection: 3.14.10. Pinned: the linux/amd64 image manifest.
+    default: cimg/python@sha256:1e39aeaaf097598f60e55e42ee57289448a97dea346a9c8f53e3af70b50ac7db
+    type: string
+  resource_class:
+    description: >
+      CircleCI resource class for this Docker executor.
+    default: "small"
+    enum: ["small", "medium", "medium+", "large"]
+    type: enum

@@ -1,0 +1,390 @@
+{
+  "record_version": 1,
+  "ticket": 5536,
+  "purpose": "Verified image record of the new path (contract section 7.2). src/executors/python.yml controls the executor image. image-lock.json stays the record of the existing GHCR image.",
+  "contract": {
+    "path": "docs/python-install-contract.md",
+    "contract_commit": "7aadae5af4302ee1d619a9725d63ff1f0923d800",
+    "adoption_record": "Redmine #5535 journal 11280",
+    "sections": ["6.1", "7.1", "7.2", "8.1", "19.2", "19.3"]
+  },
+  "selected_image": {
+    "status": "Selected from registry data. The minimal CI measured the prerequisites in job 602 (see measurement and circleci_runtime_verification).",
+    "repository": "docker.io/cimg/python",
+    "tag_at_selection": "3.14.10",
+    "tag_resolved_at": "2026-11-15T18:41:00+09:00",
+    "resolution_method": "The human ran GET https://registry-1.docker.io/v2/cimg/python/manifests/3.14.10 (OCI Distribution API, anonymous pull token, Accept: OCI image index and Docker manifest list) and shared the response. tag_resolved_at is the response Date header. index_digest is the docker-content-digest header. The shared body was rebuilt byte for byte: 1609 bytes, equal to content-length, and its SHA-256 equals index_digest.",
+    "recorded_response_headers": ["date", "content-type", "content-length", "docker-content-digest"],
+    "index_digest": "sha256:308765615c69cf91df2ab259dcb91ccc198603cd7cf1b9de0b8a48fd1a3ecc1c",
+    "index_media_type": "application/vnd.oci.image.index.v1+json",
+    "index_size_bytes": 1609,
+    "platform": "linux/amd64",
+    "manifest_digest": "sha256:1e39aeaaf097598f60e55e42ee57289448a97dea346a9c8f53e3af70b50ac7db",
+    "manifest_media_type": "application/vnd.oci.image.manifest.v1+json",
+    "manifest_size_bytes": 2791,
+    "reference": "cimg/python@sha256:1e39aeaaf097598f60e55e42ee57289448a97dea346a9c8f53e3af70b50ac7db",
+    "pinned_digest_kind": "The linux/amd64 image manifest. It fixes the exact content that a linux/amd64 job runs. The index digest is kept for traceability.",
+    "other_index_entries": [
+      {
+        "platform": "linux/arm64",
+        "digest": "sha256:3a222ba21da11766e0d08f25a1f8faf54eaaf2d141dcf38016ae88b511f6034d",
+        "media_type": "application/vnd.oci.image.manifest.v1+json",
+        "size": 2791
+      },
+      {
+        "platform": "unknown/unknown",
+        "digest": "sha256:d74eedd5b1cdba907d1feeb09be8dfb8c592d1a15e06e9b9bea80d2f141986a2",
+        "media_type": "application/vnd.oci.image.manifest.v1+json",
+        "size": 837,
+        "reference_type": "attestation-manifest",
+        "reference_digest": "sha256:1e39aeaaf097598f60e55e42ee57289448a97dea346a9c8f53e3af70b50ac7db"
+      },
+      {
+        "platform": "unknown/unknown",
+        "digest": "sha256:f04ca60d15028cea8bbb4dd81344ad97ca03cc6589cc436ae44478c9cf1f4a99",
+        "media_type": "application/vnd.oci.image.manifest.v1+json",
+        "size": 837,
+        "reference_type": "attestation-manifest",
+        "reference_digest": "sha256:3a222ba21da11766e0d08f25a1f8faf54eaaf2d141dcf38016ae88b511f6034d"
+      }
+    ],
+    "selection_reason": "First candidate of decision 05: Python 3.14.10, the measured Python of the existing GHCR image."
+  },
+  "build_source": {
+    "repository": "https://github.com/CircleCI-Public/cimg-python",
+    "commit": "c208a670dca565ed60f73c276136680fe3ec8b00",
+    "checked_at": "2026-11-15T18:27:00+09:00",
+    "files": ["3.14/Dockerfile", "build-images.sh", "GEN-CHECK", "manifest"],
+    "observations": [
+      "3.14/Dockerfile starts FROM cimg/base:2026.10.",
+      "3.14/Dockerfile sets PYENV_ROOT=/home/circleci/.pyenv and puts /home/circleci/.pyenv/shims and /home/circleci/.pyenv/bin first on PATH.",
+      "3.14/Dockerfile runs 'pyenv install 3.14.10' with --enable-shared --enable-optimizations, then 'pyenv global 3.14.10'.",
+      "3.14/Dockerfile upgrades pip in that interpreter and installs pipenv, wheel, pipx (user), poetry and uv. It installs no Ansible tool.",
+      "build-images.sh builds cimg/python:3.14.10 and cimg/python:3.14 for linux/amd64 and linux/arm64 from 3.14/Dockerfile.",
+      "GEN-CHECK lists 3.14.10."
+    ],
+    "scope": "Build design read from the source repository. It is not a measurement of the published image. It does not prove that the published tag was built from this commit."
+  },
+  "expected_interpreter": {
+    "path": "/home/circleci/.pyenv/versions/3.14.10/bin/python3.14",
+    "version": "3.14.10",
+    "basis": "pyenv installs a version under PYENV_ROOT/versions/<version>. This path follows from the build source. Checks P5, P6 and P11 of the minimal CI confirmed it in job 602 (see measurement).",
+    "rule_for_install": "install uses this absolute path and checks the exact version (contract section 8.1). It never selects Python through pyenv shims, .python-version or PYENV_VERSION. #5537 owns the handling after checkout."
+  },
+  "measurement": {
+    "status": "passed",
+    "method": "The minimal CI job python-executor-test runs .circleci/check-python-executor.py inside the pinned image and stores the artifact python-executor-evidence.",
+    "checks": {
+      "P0": "The checked-out source is the pipeline revision (CIRCLE_SHA1).",
+      "P1": "src/executors/python.yml pins selected_image.reference.",
+      "P2": "The job runs on linux/amd64.",
+      "P3": "bash is on PATH and runs.",
+      "P4": "git is on PATH and runs.",
+      "P5": "expected_interpreter.path exists and is executable.",
+      "P6": "The interpreter reports expected_interpreter.version as a final release.",
+      "P7": "pip is available to the interpreter.",
+      "P8": "The interpreter creates a virtual environment that has pip. Its bootstrap distributions are recorded.",
+      "P9": "No command whose name starts with 'ansible' is on PATH.",
+      "P10": "The job user can write its home directory without sudo.",
+      "P11": "A .python-version file does not change expected_interpreter.path."
+    },
+    "observations": [
+      "How python, python3, pip, pip3 and pyenv resolve, and their real paths.",
+      "pyenv root, version, versions and 'pyenv which python3'.",
+      "python3 on PATH in a directory whose .python-version names a version that is not installed.",
+      "A fixed list of non-secret environment variables, the names of PIP_* variables, /etc/os-release and the kernel release."
+    ],
+    "results": {
+      "evidence": "Job 602 of commit 0b95daea295b418fab7f272c22139ac58c651a06 (see circleci_runtime_verification).",
+      "observed_at": "2026-11-15T12:19:48.905868+00:00",
+      "summary": "P0 to P11 passed.",
+      "verified_values": {
+        "basis": "The values that contract section 7.2 requires, taken from checks P3 to P8.",
+        "interpreter_path": "/home/circleci/.pyenv/versions/3.14.10/bin/python3.14",
+        "interpreter_version": "3.14.10",
+        "pip_version": "26.2.2",
+        "virtual_environment": "The interpreter created a virtual environment with pip 26.2.2. Bootstrap distributions: pip 26.2.2.",
+        "bash": "/usr/bin/bash: GNU bash, version 5.2.21(1)-release (x86_64-pc-linux-gnu)",
+        "git": "/usr/bin/git: git version 2.56.0"
+      },
+      "copied_from_evidence": "The passed and observed values of checks, and observations, are copied from python-executor.json without change. The requirement texts (see measurement.checks) and the commands list (full bash and git --version output) are left out.",
+      "checks": {
+        "P0": {
+          "passed": true,
+          "observed": {
+            "head": "0b95daea295b418fab7f272c22139ac58c651a06",
+            "circle_sha1": "0b95daea295b418fab7f272c22139ac58c651a06"
+          }
+        },
+        "P1": {
+          "passed": true,
+          "observed": {
+            "executor_defaults": ["cimg/python@sha256:1e39aeaaf097598f60e55e42ee57289448a97dea346a9c8f53e3af70b50ac7db"],
+            "recorded_reference": "cimg/python@sha256:1e39aeaaf097598f60e55e42ee57289448a97dea346a9c8f53e3af70b50ac7db"
+          }
+        },
+        "P2": {
+          "passed": true,
+          "observed": {
+            "observed_platform": "linux/amd64"
+          }
+        },
+        "P3": {
+          "passed": true,
+          "observed": {
+            "path": "/usr/bin/bash",
+            "version_line": "GNU bash, version 5.2.21(1)-release (x86_64-pc-linux-gnu)"
+          }
+        },
+        "P4": {
+          "passed": true,
+          "observed": {
+            "path": "/usr/bin/git",
+            "version_line": "git version 2.56.0"
+          }
+        },
+        "P5": {
+          "passed": true,
+          "observed": {
+            "path": "/home/circleci/.pyenv/versions/3.14.10/bin/python3.14",
+            "realpath": "/home/circleci/.pyenv/versions/3.14.10/bin/python3.14"
+          }
+        },
+        "P6": {
+          "passed": true,
+          "observed": {
+            "version": "3.14.10",
+            "releaselevel": "final",
+            "executable": "/home/circleci/.pyenv/versions/3.14.10/bin/python3.14",
+            "prefix": "/home/circleci/.pyenv/versions/3.14.10",
+            "base_prefix": "/home/circleci/.pyenv/versions/3.14.10",
+            "machine": "x86_64"
+          }
+        },
+        "P7": {
+          "passed": true,
+          "observed": {
+            "version_line": "pip 26.2.2 from /home/circleci/.pyenv/versions/3.14.10/lib/python3.14/site-packages/pip (python 3.14)"
+          }
+        },
+        "P8": {
+          "passed": true,
+          "observed": {
+            "created": true,
+            "create": {
+              "command": ["/home/circleci/.pyenv/versions/3.14.10/bin/python3.14", "-I", "-m", "venv", "/tmp/ansible-lint-orb-venv-check-7ghqyo1c/venv"],
+              "cwd": null,
+              "exit_code": 0,
+              "stdout": "",
+              "stderr": ""
+            },
+            "pip_exit_code": 0,
+            "pip_version_line": "pip 26.2.2 from /tmp/ansible-lint-orb-venv-check-7ghqyo1c/venv/lib/python3.14/site-packages/pip (python 3.14)",
+            "bootstrap_distributions": [["pip", "26.2.2"]]
+          }
+        },
+        "P9": {
+          "passed": true,
+          "observed": {
+            "found": []
+          }
+        },
+        "P10": {
+          "passed": true,
+          "observed": {
+            "home": {
+              "directory": "/home/circleci",
+              "writable": true
+            },
+            "tmp": {
+              "directory": "/tmp",
+              "writable": true
+            },
+            "uid": 1001,
+            "user": "circleci"
+          }
+        },
+        "P11": {
+          "passed": true,
+          "observed": {
+            "recorded_interpreter": {
+              "command": ["/home/circleci/.pyenv/versions/3.14.10/bin/python3.14", "--version"],
+              "cwd": "/tmp/ansible-lint-orb-python-version-probe-w9ue8_fc",
+              "exit_code": 0,
+              "stdout": "Python 3.14.10\n",
+              "stderr": ""
+            }
+          }
+        }
+      },
+      "observations": {
+        "python_version_file_probe": {
+          "python_version_file": "0.0.0-ansible-lint-orb-probe",
+          "python3_on_path": {
+            "command": ["python3", "--version"],
+            "cwd": "/tmp/ansible-lint-orb-python-version-probe-w9ue8_fc",
+            "exit_code": 0,
+            "stdout": "Python 3.14.10\n",
+            "stderr": ""
+          },
+          "recorded_interpreter": {
+            "command": ["/home/circleci/.pyenv/versions/3.14.10/bin/python3.14", "--version"],
+            "cwd": "/tmp/ansible-lint-orb-python-version-probe-w9ue8_fc",
+            "exit_code": 0,
+            "stdout": "Python 3.14.10\n",
+            "stderr": ""
+          }
+        },
+        "command_resolution": {
+          "python": {
+            "path": "/home/circleci/.pyenv/versions/3.14.10/bin/python",
+            "realpath": "/home/circleci/.pyenv/versions/3.14.10/bin/python3.14"
+          },
+          "python3": {
+            "path": "/home/circleci/.pyenv/versions/3.14.10/bin/python3",
+            "realpath": "/home/circleci/.pyenv/versions/3.14.10/bin/python3.14"
+          },
+          "pip": {
+            "path": "/home/circleci/.pyenv/versions/3.14.10/bin/pip",
+            "realpath": "/home/circleci/.pyenv/versions/3.14.10/bin/pip3.14"
+          },
+          "pip3": {
+            "path": "/home/circleci/.pyenv/versions/3.14.10/bin/pip3",
+            "realpath": "/home/circleci/.pyenv/versions/3.14.10/bin/pip3"
+          },
+          "pyenv": {
+            "path": "/home/circleci/.pyenv/libexec/pyenv",
+            "realpath": "/home/circleci/.pyenv/libexec/pyenv"
+          }
+        },
+        "pyenv": {
+          "pyenv_version": {
+            "command": ["pyenv", "--version"],
+            "cwd": null,
+            "exit_code": 0,
+            "stdout": "pyenv 2.8.14\n",
+            "stderr": ""
+          },
+          "root": {
+            "command": ["pyenv", "root"],
+            "cwd": null,
+            "exit_code": 0,
+            "stdout": "/home/circleci/.pyenv\n",
+            "stderr": ""
+          },
+          "version": {
+            "command": ["pyenv", "version"],
+            "cwd": null,
+            "exit_code": 0,
+            "stdout": "3.14.10 (set by PYENV_VERSION environment variable)\n",
+            "stderr": ""
+          },
+          "versions": {
+            "command": ["pyenv", "versions", "--bare"],
+            "cwd": null,
+            "exit_code": 0,
+            "stdout": "3.14.10\n",
+            "stderr": ""
+          },
+          "which_python3": {
+            "command": ["pyenv", "which", "python3"],
+            "cwd": null,
+            "exit_code": 0,
+            "stdout": "/home/circleci/.pyenv/versions/3.14.10/bin/python3\n",
+            "stderr": ""
+          }
+        },
+        "environment": {
+          "HOME": "/home/circleci",
+          "USER": null,
+          "SHELL": null,
+          "PATH": "/home/circleci/.pyenv/versions/3.14.10/bin:/home/circleci/.pyenv/libexec:/home/circleci/.pyenv/plugins/python-build/bin:/home/circleci/.pyenv/plugins/pyenv-virtualenv/bin:/home/circleci/.pyenv/plugins/pyenv-update/bin:/home/circleci/.pyenv/plugins/pyenv-link/bin:/home/circleci/.pyenv/plugins/pyenv-doctor/bin:/home/circleci/.pyenv/plugins/pyenv-binary/bin:/home/circleci/.pyenv/shims:/home/circleci/.pyenv/bin:/home/circleci/.poetry/bin:/home/circleci/bin:/home/circleci/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+          "PYENV_ROOT": "/home/circleci/.pyenv",
+          "PYENV_VERSION": "3.14.10",
+          "PYTHONHOME": null,
+          "PYTHONPATH": null,
+          "VIRTUAL_ENV": null
+        },
+        "pip_variable_names": [],
+        "os_release": {
+          "PRETTY_NAME": "Ubuntu 24.04.5 LTS",
+          "NAME": "Ubuntu",
+          "VERSION_ID": "24.04"
+        },
+        "kernel_release": "7.0.0-1017-aws"
+      },
+      "notes": [
+        "The job started the checker as python3. With the job PATH, python3 is the pyenv shim, and the shim runs pyenv exec. pyenv 2.8.14 exports PYENV_VERSION and puts /home/circleci/.pyenv/versions/3.14.10/bin, /home/circleci/.pyenv/libexec and the plugin bin directories in front of PATH (libexec/pyenv and libexec/pyenv-exec). observations.environment, command_resolution, pyenv and python_version_file_probe describe that checker process, not the job shell.",
+        "The job PATH is the part of observations.environment.PATH from /home/circleci/.pyenv/shims onward. Its first three entries match the ENV line of 3.14/Dockerfile in the build source, which sets no PYENV_VERSION.",
+        "python_version_file_probe ran python3 from /home/circleci/.pyenv/versions/3.14.10/bin with PYENV_VERSION set, so it did not go through the shim. It is not evidence of how python3 resolves in a job shell whose working directory has a .python-version file (#5537).",
+        "P11 runs expected_interpreter.path directly and does not depend on PATH or PYENV_VERSION. P3, P4 and P9 searched the checker PATH, which is the job PATH with pyenv directories in front, so their results also hold for the job PATH."
+      ]
+    }
+  },
+  "circleci_runtime_verification": {
+    "status": "verified",
+    "commit": "0b95daea295b418fab7f272c22139ac58c651a06",
+    "commit_url": "https://github.com/circleci-orbs-mamono210/ansible-lint/commit/0b95daea295b418fab7f272c22139ac58c651a06",
+    "commit_scope": "The later commit that adds these results changes only this file. Its CI runs are not recorded here.",
+    "branch": "5536",
+    "pipeline_id": "59c67bc1-9107-4e20-9d50-893f8966bb8f",
+    "workflow": "test-deploy",
+    "workflow_id": "437b184b-9bb9-4c13-87e2-75392581728e",
+    "job": "python-executor-test",
+    "job_number": 602,
+    "job_id": "b7c94b47-2649-43b8-b121-d817a7021e4d",
+    "job_url": "https://circleci.com/gh/circleci-orbs-mamono210/ansible-lint/602",
+    "started_at": "2026-11-15T12:19:41.197Z",
+    "stopped_at": "2026-11-15T12:19:49.354Z",
+    "result": "success",
+    "check_step": {
+      "name": "Check the python executor prerequisites and record evidence",
+      "started_at": "2026-11-15T12:19:44.516Z",
+      "stopped_at": "2026-11-15T12:19:48.965Z",
+      "exit_code": 0,
+      "last_line": "All python executor checks passed."
+    },
+    "observed_platform": "linux/amd64",
+    "full_image_reference_verified_in": "Spin up environment",
+    "spin_up_log": {
+      "container_line": "Starting container cimg/python@sha256:1e39aeaaf097598f60e55e42ee57289448a97dea346a9c8f53e3af70b50ac7db",
+      "matches_selected_image_reference": true,
+      "pull_stats": "Image was already available so the image was not pulled",
+      "system": "OSType linux, Architecture amd64, Kernel Version 7.0.0-1017-aws, v2 container runtime"
+    },
+    "image_pull": "Not pulled in this job. The host already had the image, and the container started from the full digest reference.",
+    "artifact_directory": "python-executor-evidence",
+    "evidence_size_bytes": {
+      "python-executor.json": 9312
+    },
+    "evidence_sha256": {
+      "python-executor.json": "1a536b2346964202d4bdaddd5812eeb8c3111eee8bd7cbc6eac8bb152e3b8237"
+    },
+    "evidence_sha256_basis": "Computed over the evidence content rebuilt from the check step's log, not over a downloaded copy of the artifact. check-python-executor.py prints the same JSON that it writes, and the file adds one newline. The rebuilt JSON re-serializes to the printed text exactly. The captured step output, including its final newline, is 10375 bytes, equal to the step's stdout size reported by CircleCI. The upload step reports the file as 9.3 kB.",
+    "image_reference_rule": "Confirm the full reference cimg/python@sha256:<manifest_digest> in the job's Spin up environment log. Configuration alone is not evidence of the image that ran."
+  },
+  "minimal_ci": {
+    "config": ".circleci/test-deploy.yml",
+    "workflow": "test-deploy",
+    "job": "python-executor-test",
+    "executor": "ansible-lint/python with default parameters, from the candidate commit's packed Orb injected by orb-tools/continue",
+    "script": ".circleci/check-python-executor.py",
+    "artifact": "python-executor-evidence",
+    "filters": "Runs on every branch and tag, like the other test-deploy jobs.",
+    "required_by": "orb-tools/publish (production, semantic-version tags only)",
+    "publishing_context": "None. The job needs no publishing context or token.",
+    "success_conditions": "All checks P0 to P11 pass and the job exits 0.",
+    "not_covered": [
+      "Non-default resource classes and explicit image overrides (#5539).",
+      "Direct Docker jobs that use the same digest (#5539).",
+      "install, the managed environment and Python selection after checkout (#5537).",
+      "Comparison of default and execute with the 1.0.0 baseline (#5538)."
+    ],
+    "expansion": "#5539 merges this job into the required checks and keeps P0 to P11 and the publication dependency (contract section 19.2)."
+  },
+  "update_policy": {
+    "same_change": ["src/executors/python.yml", "python-image-lock.json", "docs/python-install-contract.md (sections 6.1 and 7.3)"],
+    "release_type": "A change of the default image is minor when the call and execution contract is kept and major otherwise. It is never patch (contract section 14.1).",
+    "guarantee": "The digest pins the base image content for linux/amd64. Packages installed later by install, external roles and networks are outside this pin."
+  }
+}

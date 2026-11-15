@@ -144,6 +144,20 @@ jobs:
           molecule-playbook-test: true
       - verify-integration
       - collect-ci-evidence
+  python-executor-test:
+    # Minimal check of #5536: the default python executor of this commit's
+    # packed Orb pulls, starts and has the prerequisites for install.
+    # #5539 expands this check; keep its success conditions when merging jobs.
+    executor: ansible-lint/python
+    steps:
+      - checkout:
+          path: /tmp/ansible-lint-orb-source
+      - run:
+          name: Check the python executor prerequisites and record evidence
+          command: python3 -I /tmp/ansible-lint-orb-source/.circleci/check-python-executor.py /tmp/ansible-lint-orb-source python-image-lock.json
+      - store_artifacts:
+          path: /tmp/ansible-lint-python-executor-evidence
+          destination: python-executor-evidence
 
 workflows:
   test-deploy:
@@ -159,6 +173,8 @@ workflows:
       - resource-class-test:
           filters: *filters
       - custom-image-test:
+          filters: *filters
+      - python-executor-test:
           filters: *filters
       - orb-tools/pack:
           # This workflow has its own workspace. Inspect its actual publish archive.
@@ -184,6 +200,7 @@ workflows:
             - negative-test
             - resource-class-test
             - custom-image-test
+            - python-executor-test
           # Only production publish uses the publishing context.
           context: CIRCLECI_ORBS
           filters:
