@@ -477,6 +477,8 @@ is therefore set up after `install`.
 | E9 | Platform other than Linux on amd64 | Rejected | `install` exits non-zero before creating the environment. | #5537 structural check |
 | E10 | Verified interpreter present but unable to create a virtual environment | Rejected | `install` exits non-zero. Nothing is published. | #5537 structural check; measured if reproducible |
 | E11 | `execute` before `install` on `python` | Not a supported order | 1.0.0 behavior: the first missing command fails. | No new test |
+| E12 | The managed environment location would overlap the working directory or an active virtual environment, for example a job whose working directory is the home directory | Rejected | `install` exits non-zero before creating the environment. Nothing is published. | #5537 structural check |
+| E13 | `BASH_ENV` is not set, or its file is not writable, so later steps could not receive PATH (section 7.1) | Rejected | `install` exits non-zero before creating the environment. Nothing is published. | #5537 structural check |
 
 ## 9. Managed environment
 
@@ -485,7 +487,10 @@ is therefore set up after `install`.
 - Each job has at most one managed environment, in a directory dedicated to
   this Orb.
 - It is outside the working directory and any checkout, outside system
-  Python, and not inside an existing virtual environment.
+  Python, and not inside an existing virtual environment. `install` stops
+  before it creates anything when the location would overlap the current
+  directory, the working directory of the job, or an active virtual
+  environment (E12).
 - The job user can write it without sudo. The exact path is a private detail.
   #5537 chose `$HOME/.orbss-ansible-lint` and recorded it in
   `python-install-lock.json`. README tells users where it is (#5540).
@@ -533,8 +538,9 @@ state record, with the completion marker last, only after both pass.
 | S4 Changed by the user | A later step modified the managed environment, for example with pip. | Nothing until `install` runs again. Then the state is S2. | None | `execute` then runs on a modified environment, outside the guarantee. | #5540 documents it; the S2 measurement covers the next invocation |
 
 If `install` fails after creating directories, it may remove only what it
-created in the same invocation. If it leaves them, the record has no
-completion marker, so the next invocation stops as S2.
+created in the same invocation. If it leaves them, no state record exists,
+because the record is written only after the check passes. The next
+invocation then stops as S3.
 
 ### 9.4 What `install` never changes
 
@@ -717,6 +723,8 @@ work, the test is redesigned. A required measurement is never skipped.
 | F11 | Installed distributions differ from the expected set of section 9.3 | Non-zero exit. Nothing published. | Structural; measured through F7 | #5537, #5539 |
 | F12 | Pip settings of the consumer are present | Settings ignored. Names logged, values not. | Measured (section 11) | #5539 |
 | F13 | Normal success | Commands published only after verification. A later step resolves them to the managed environment. | Measured | #5537 minimal CI, #5539 |
+| F14 | The managed environment location would overlap the working directory or an active virtual environment (E12) | Non-zero exit before creating the environment | Structural | #5537 |
+| F15 | `BASH_ENV` is not set or its file is not writable (E13) | Non-zero exit before creating the environment. Nothing published. | Structural | #5537 |
 
 ## 14. Version policy and maintenance after release
 
