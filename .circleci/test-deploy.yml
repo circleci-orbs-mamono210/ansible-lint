@@ -59,6 +59,21 @@ commands:
           path: /tmp/ansible-lint-integration-evidence
           destination: integration-evidence
 
+  check-python-install:
+    parameters:
+      phase:
+        type: string
+      title:
+        type: string
+    steps:
+      - run:
+          name: << parameters.title >>
+          # The verified interpreter by its absolute path, not python3 on PATH.
+          command: >-
+            /home/circleci/.pyenv/versions/3.14.10/bin/python3.14 -I
+            /tmp/ansible-lint-orb-source/.circleci/check-python-install.py
+            << parameters.phase >> /tmp/ansible-lint-orb-source
+
 jobs:
   normal-test:
     executor: ansible-lint/default
@@ -158,6 +173,32 @@ jobs:
       - store_artifacts:
           path: /tmp/ansible-lint-python-executor-evidence
           destination: python-executor-evidence
+  python-install-test:
+    # Minimal check of #5537: in a clean job of the default python executor,
+    # the public install of this commit's packed Orb prepares the tools, and
+    # separate steps show that the four direct commands and the real execute
+    # use the managed environment. The input is a real playbook.
+    # #5539 expands this check; keep its success conditions when merging jobs.
+    executor: ansible-lint/python
+    working_directory: /tmp/ansible-lint-case
+    steps:
+      - checkout:
+          path: /tmp/ansible-lint-orb-source
+      - check-python-install:
+          phase: before
+          title: Require a clean job and prepare the fixture
+      - ansible-lint/install
+      - check-python-install:
+          phase: after-install
+          title: Check the managed environment and command resolution in a separate step
+      # Both public parameters deliberately use their default false values.
+      - ansible-lint/execute
+      - check-python-install:
+          phase: after-execute
+          title: Require that the real execute used the managed environment without a violation
+      - store_artifacts:
+          path: /tmp/ansible-lint-python-install-evidence
+          destination: python-install-evidence
 
 workflows:
   test-deploy:
@@ -176,12 +217,17 @@ workflows:
           filters: *filters
       - python-executor-test:
           filters: *filters
+      - python-install-test:
+          filters: *filters
       - orb-tools/pack:
           # This workflow has its own workspace. Inspect its actual publish archive.
           post-steps:
             - run:
                 name: Verify the actual publication archive preserves the exit code
                 command: bash .circleci/verify-packed-orb.sh dist/orb_source.tar.gz publication
+            - run:
+                name: Verify the actual publication archive holds this commit's install command
+                command: bash .circleci/verify-packed-install.sh dist/orb_source.tar.gz publication
             - store_artifacts:
                 path: /tmp/ansible-lint-pack-evidence
                 destination: packed-orb-structure
@@ -201,6 +247,7 @@ workflows:
             - resource-class-test
             - custom-image-test
             - python-executor-test
+            - python-install-test
           # Only production publish uses the publishing context.
           context: CIRCLECI_ORBS
           filters:

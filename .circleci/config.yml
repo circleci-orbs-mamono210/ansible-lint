@@ -20,6 +20,9 @@ workflows:
             - run:
                 name: Verify the actual injection archive preserves the exit code
                 command: bash .circleci/verify-packed-orb.sh dist/orb_source.tar.gz injection
+            - run:
+                name: Verify the actual injection archive holds this commit's install command
+                command: bash .circleci/verify-packed-install.sh dist/orb_source.tar.gz injection
             - store_artifacts:
                 path: /tmp/ansible-lint-pack-evidence
                 destination: packed-orb-structure

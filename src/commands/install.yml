@@ -1,0 +1,12 @@
+---
+description: >
+  Install the pinned Ansible lint tool set into a Python virtual environment
+  that this Orb manages, for later steps of the same job such as execute. It
+  requires the verified Python interpreter of a verified image, such as the
+  default image of the python executor. It has no parameters. It needs network
+  access to PyPI.
+
+steps:
+  - run:
+      name: Install the pinned Ansible lint tool set
+      command: <<include(scripts/install.sh)>>

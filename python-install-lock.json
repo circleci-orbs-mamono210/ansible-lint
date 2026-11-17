@@ -1,0 +1,603 @@
+{
+  "record_version": 1,
+  "ticket": 5537,
+  "purpose": "Record of the install command: the fixed tool set, the exposed commands, the required CLIs, the managed environment and the minimal CI (contract sections 8 to 13 and 19.3). src/scripts/install.sh holds the fixed information that the Orb uses. python-image-lock.json stays the record of the image and its interpreter.",
+  "contract": {
+    "path": "docs/python-install-contract.md",
+    "contract_commit": "cb56693e020a89b8661578067035f4d2a08229fa",
+    "adoption_record": "Redmine #5536 journal 11283",
+    "sections": ["6.2", "8.1", "8.3", "9", "10", "11", "12", "13", "19.2", "19.3"]
+  },
+  "base_environment": {
+    "record": "python-image-lock.json",
+    "image_reference": "cimg/python@sha256:1e39aeaaf097598f60e55e42ee57289448a97dea346a9c8f53e3af70b50ac7db",
+    "platform": "linux/amd64",
+    "interpreter": "/home/circleci/.pyenv/versions/3.14.10/bin/python3.14",
+    "interpreter_version": "3.14.10"
+  },
+  "implementation": {
+    "command": "src/commands/install.yml",
+    "script": "src/scripts/install.sh",
+    "public_parameters": [],
+    "layout": "One run step. The script checks the platform and the interpreter path in Bash, then starts the verified interpreter by its absolute path with -I and gives it the Python program of the same file. The pack embeds the whole file in the command.",
+    "consumer_files_needed": [],
+    "pack_note": "The pack writes the here-document operator of the script as \\<<. CircleCI turns it back into << when it compiles a configuration. .circleci/verify-packed-install.sh compares the packed command with the script after this one replacement."
+  },
+  "fixed_set_sha256": "1fbfcfefef86ba00fcefe9b340e3024e4d4f21e45a13f568c192e4234a389d85",
+  "fixed_set_identifier_rule": "SHA-256 of fixed_information as JSON with sorted keys, separators ',' and ':' and ASCII output. install computes it from its embedded copy and writes it to the state record.",
+  "fixed_information": {
+    "schema": 1,
+    "orb": "orbss/ansible-lint",
+    "platform": {"system": "linux", "machine": "x86_64"},
+    "interpreter": {"path": "/home/circleci/.pyenv/versions/3.14.10/bin/python3.14", "version": "3.14.10"},
+    "index_url": "https://pypi.org/simple",
+    "bootstrap_distributions": {"pip": "26.2.2"},
+    "distributions": {
+      "ansible": "14.5.0",
+      "ansible-compat": "26.10.0",
+      "ansible-core": "2.21.5",
+      "ansible-lint": "26.10.1",
+      "attrs": "26.1.0",
+      "black": "26.10.1",
+      "bracex": "3.2.3",
+      "cffi": "2.1.1",
+      "click": "8.5.1",
+      "cryptography": "50.0.2",
+      "distro": "1.9.0",
+      "filelock": "4.2.11",
+      "jinja2": "3.1.6",
+      "jsonschema": "4.26.0",
+      "jsonschema-specifications": "2025.9.1",
+      "markupsafe": "3.0.4",
+      "mypy-extensions": "1.2.0",
+      "packaging": "26.3",
+      "pathspec": "1.1.1",
+      "platformdirs": "4.14.5",
+      "pycparser": "3.12",
+      "pytokens": "0.4.1",
+      "pyyaml": "6.0.3",
+      "referencing": "0.37.0",
+      "resolvelib": "1.2.1",
+      "rpds-py": "2026.9.1",
+      "ruamel-yaml": "0.19.1",
+      "subprocess-tee": "0.4.2",
+      "wcmatch": "12.0.3",
+      "yamllint": "1.38.0"
+    },
+    "exposed_commands": ["ansible", "ansible-community", "ansible-config", "ansible-console", "ansible-doc", "ansible-galaxy", "ansible-inventory", "ansible-lint", "ansible-playbook", "ansible-pull", "ansible-test", "ansible-vault"],
+    "direct_commands": ["ansible", "ansible-community", "ansible-galaxy", "ansible-lint"],
+    "runtime_clis": ["ansible", "ansible-config", "ansible-doc", "ansible-galaxy", "ansible-playbook"]
+  },
+  "fixed_set": {
+    "status": "Resolved and installed outside the selected image. The installation on the selected image is measured by the minimal CI (see measurement).",
+    "first_candidates": {"python": "3.14.10", "ansible-lint": "26.10.1", "ansible": "14.5.0", "ansible-core": "2.21.5"},
+    "first_candidates_basis": "Decision 05: the measured versions of the existing GHCR image (image-lock.json). ansible is the Ansible package. ansible-core is a separate distribution.",
+    "resolved_at": "2026-11-17T20:41:04+09:00",
+    "resolution_method": "pip 26.2.2 resolved 'ansible-lint==26.10.1 ansible==14.5.0 ansible-core==2.21.5 ansible-compat==26.10.0' with 'install --dry-run --ignore-installed --only-binary :all: --index-url https://pypi.org/simple --report', in isolated mode and without configuration files. The 30 distributions of the report are the fixed set.",
+    "resolution_environment": "CPython 3.14.10 for x86_64 Linux in a virtual environment whose bootstrap pip is 26.2.2. It was not the selected image: the interpreter came from python-build-standalone release 20261110.",
+    "held_dependency": {
+      "name": "ansible-compat",
+      "version": "26.10.0",
+      "newest_at_resolution": "26.11.0",
+      "reason": "26.10.0 is the version that ansible-lint 26.10.1 reports in the existing GHCR image (image-lock.json). The same resolution without this pin differs only in this distribution. The other dependencies are the newest versions that pip selected."
+    },
+    "also_equal_to_existing_image": "ruamel-yaml 0.19.1, jinja2 3.1.6 and pyyaml 6.0.3 equal the versions in the recorded command output of image-lock.json. The other dependency versions of that image are not recorded and were not compared.",
+    "distributions": [
+      {
+        "name": "ansible",
+        "version": "14.5.0",
+        "role": "first candidate",
+        "file": "ansible-14.5.0-py3-none-any.whl",
+        "sha256": "245623ccc2d31d0f6f4bdb63168d550cad305fb032cc43d96e8f61ce8ab0ba84"
+      },
+      {
+        "name": "ansible-compat",
+        "version": "26.10.0",
+        "role": "dependency, held at the version of the existing GHCR image",
+        "file": "ansible_compat-26.10.0-py3-none-any.whl",
+        "sha256": "700f0778fbb348daf6ee58941871e8ca77a987702993e8bf7895761d036d6450"
+      },
+      {
+        "name": "ansible-core",
+        "version": "2.21.5",
+        "role": "first candidate",
+        "file": "ansible_core-2.21.5-py3-none-any.whl",
+        "sha256": "08886f9f3e23d129aa98a01271c4a47833516e1cb7c737a246788cb474f41222"
+      },
+      {
+        "name": "ansible-lint",
+        "version": "26.10.1",
+        "role": "first candidate",
+        "file": "ansible_lint-26.10.1-py3-none-any.whl",
+        "sha256": "cc26d405ee38c3390e80ec18c4137b5685c36d03ce7d4d8233b0470d9a0e21e9"
+      },
+      {
+        "name": "attrs",
+        "version": "26.1.0",
+        "role": "dependency",
+        "file": "attrs-26.1.0-py3-none-any.whl",
+        "sha256": "c647aa4a12dfbad9333ca4e71fe62ddc36f4e63b2d260a37a8b83d2f043ac309"
+      },
+      {
+        "name": "black",
+        "version": "26.10.1",
+        "role": "dependency",
+        "file": "black-26.10.1-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+        "sha256": "289282aa2e09d3162312a3be1788ff21b08e9ea9cc4a81e656024728b32428fb"
+      },
+      {
+        "name": "bracex",
+        "version": "3.2.3",
+        "role": "dependency",
+        "file": "bracex-3.2.3-py3-none-any.whl",
+        "sha256": "8d6d677856121820d67b9009e76a5740fb02ab6dcd2d9815a83724d1888c305d"
+      },
+      {
+        "name": "cffi",
+        "version": "2.1.1",
+        "role": "dependency",
+        "file": "cffi-2.1.1-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+        "sha256": "b0431303acaea1089ad4b3e9ce4e6518193def1118d4073ca848635ee4ea2e96"
+      },
+      {
+        "name": "click",
+        "version": "8.5.1",
+        "role": "dependency",
+        "file": "click-8.5.1-py3-none-any.whl",
+        "sha256": "8bb5376d2006950386f8c6427613334a2acadc5f559cb80e638d00b4df957e37"
+      },
+      {
+        "name": "cryptography",
+        "version": "50.0.2",
+        "role": "dependency",
+        "file": "cryptography-50.0.2-cp311-abi3-manylinux_2_34_x86_64.whl",
+        "sha256": "9dab55f57c74c3cad24c323bacbbd04be4705ba6eb0d92e920b1fc4837ed5079"
+      },
+      {
+        "name": "distro",
+        "version": "1.9.0",
+        "role": "dependency",
+        "file": "distro-1.9.0-py3-none-any.whl",
+        "sha256": "7bffd925d65168f85027d8da9af6bddab658135b840670a223589bc0c8ef02b2"
+      },
+      {
+        "name": "filelock",
+        "version": "4.2.11",
+        "role": "dependency",
+        "file": "filelock-4.2.11-py3-none-any.whl",
+        "sha256": "020e229e4bb9d410fc799c07ddf45fa217cba970278f40b30751d94f309b69e2"
+      },
+      {
+        "name": "jinja2",
+        "version": "3.1.6",
+        "role": "dependency",
+        "file": "jinja2-3.1.6-py3-none-any.whl",
+        "sha256": "85ece4451f492d0c13c5dd7c13a64681a86afae63a5f347908daf103ce6d2f67"
+      },
+      {
+        "name": "jsonschema",
+        "version": "4.26.0",
+        "role": "dependency",
+        "file": "jsonschema-4.26.0-py3-none-any.whl",
+        "sha256": "d489f15263b8d200f8387e64b4c3a75f06629559fb73deb8fdfb525f2dab50ce"
+      },
+      {
+        "name": "jsonschema-specifications",
+        "version": "2025.9.1",
+        "role": "dependency",
+        "file": "jsonschema_specifications-2025.9.1-py3-none-any.whl",
+        "sha256": "98802fee3a11ee76ecaca44429fda8a41bff98b00a0f2838151b113f210cc6fe"
+      },
+      {
+        "name": "markupsafe",
+        "version": "3.0.4",
+        "role": "dependency",
+        "file": "markupsafe-3.0.4-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+        "sha256": "a8e9f292fcda89b324f2f5c91d13f1424a153e40fc2756f38ee23b15835ff300"
+      },
+      {
+        "name": "mypy-extensions",
+        "version": "1.2.0",
+        "role": "dependency",
+        "file": "mypy_extensions-1.2.0-py3-none-any.whl",
+        "sha256": "993e7a20aa5671eb41a7132cf555af30062da99729601601b9a8382b11cae768"
+      },
+      {
+        "name": "packaging",
+        "version": "26.3",
+        "role": "dependency",
+        "file": "packaging-26.3-py3-none-any.whl",
+        "sha256": "d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c"
+      },
+      {
+        "name": "pathspec",
+        "version": "1.1.1",
+        "role": "dependency",
+        "file": "pathspec-1.1.1-py3-none-any.whl",
+        "sha256": "a00ce642f577bf7f473932318056212bc4f8bfdf53128c78bbd5af0b9b20b189"
+      },
+      {
+        "name": "platformdirs",
+        "version": "4.14.5",
+        "role": "dependency",
+        "file": "platformdirs-4.14.5-py3-none-any.whl",
+        "sha256": "8e778c6fa421516f4d3369449f8df3b0e1b72c0e0005fe88e3ec772d0a14e750"
+      },
+      {
+        "name": "pycparser",
+        "version": "3.12",
+        "role": "dependency",
+        "file": "pycparser-3.12-py3-none-any.whl",
+        "sha256": "a076f3f489b39b43ed13563a1dafe42447445bec2e294154ec5c57fcdda4c85e"
+      },
+      {
+        "name": "pytokens",
+        "version": "0.4.1",
+        "role": "dependency",
+        "file": "pytokens-0.4.1-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+        "sha256": "dc74c035f9bfca0255c1af77ddd2d6ae8419012805453e4b0e7513e17904545d"
+      },
+      {
+        "name": "pyyaml",
+        "version": "6.0.3",
+        "role": "dependency",
+        "file": "pyyaml-6.0.3-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+        "sha256": "c458b6d084f9b935061bc36216e8a69a7e293a2f1e68bf956dcd9e6cbcd143f5"
+      },
+      {
+        "name": "referencing",
+        "version": "0.37.0",
+        "role": "dependency",
+        "file": "referencing-0.37.0-py3-none-any.whl",
+        "sha256": "381329a9f99628c9069361716891d34ad94af76e461dcb0335825aecc7692231"
+      },
+      {
+        "name": "resolvelib",
+        "version": "1.2.1",
+        "role": "dependency",
+        "file": "resolvelib-1.2.1-py3-none-any.whl",
+        "sha256": "fb06b66c8da04172d9e72a21d7d06186d8919e32ae5ab5cdf5b9d920be805ac2"
+      },
+      {
+        "name": "rpds-py",
+        "version": "2026.9.1",
+        "role": "dependency",
+        "file": "rpds_py-2026.9.1-cp314-cp314-manylinux_2_17_x86_64.manylinux2014_x86_64.whl",
+        "sha256": "eac2f5dbafd585dfe31f86a23ebf0d3ba480a9d49ebc87947267b5608d4ea0cd"
+      },
+      {
+        "name": "ruamel-yaml",
+        "version": "0.19.1",
+        "role": "dependency",
+        "file": "ruamel_yaml-0.19.1-py3-none-any.whl",
+        "sha256": "27592957fedf6e0b62f281e96effd28043345e0e66001f97683aa9a40c667c93"
+      },
+      {
+        "name": "subprocess-tee",
+        "version": "0.4.2",
+        "role": "dependency",
+        "file": "subprocess_tee-0.4.2-py3-none-any.whl",
+        "sha256": "21942e976715af4a19a526918adb03a8a27a8edab959f2d075b777e3d78f532d"
+      },
+      {
+        "name": "wcmatch",
+        "version": "12.0.3",
+        "role": "dependency",
+        "file": "wcmatch-12.0.3-py3-none-any.whl",
+        "sha256": "7255aeae27423a2dfe5bbce9bab7e97369ecad16f0d0a5244f85239123daeaa5"
+      },
+      {
+        "name": "yamllint",
+        "version": "1.38.0",
+        "role": "dependency",
+        "file": "yamllint-1.38.0-py3-none-any.whl",
+        "sha256": "fc394a5b3be980a4062607b8fdddc0843f4fa394152b6da21722f5d59013c220"
+      }
+    ],
+    "file_scope": "file and sha256 name the wheel that the resolution selected. Every distribution has a wheel for CPython 3.14 on x86_64 Linux, so install uses --only-binary :all: and builds nothing. install pins versions only. It does not verify these hashes (contract section 12).",
+    "dependency_check": "After installing, install runs 'pip check'. A missing or conflicting requirement fails install."
+  },
+  "bootstrap_distributions": {
+    "pip": "26.2.2",
+    "basis": "The pip that the verified interpreter puts into a new virtual environment. Check P8 of python-image-lock.json measured pip 26.2.2 in job 602. Lib/ensurepip/__init__.py of CPython v3.14.10 sets _PIP_VERSION to 26.2.2.",
+    "handling": "The fixed set does not pin pip, so install does not upgrade it. Before it creates anything, install requires that the interpreter bundles this version. The distribution check expects the fixed set plus this pip and nothing else."
+  },
+  "exposed_commands": {
+    "list": ["ansible", "ansible-community", "ansible-config", "ansible-console", "ansible-doc", "ansible-galaxy", "ansible-inventory", "ansible-lint", "ansible-playbook", "ansible-pull", "ansible-test", "ansible-vault"],
+    "rule": "The executables in the bin directory of the virtual environment whose names start with 'ansible' and that a distribution of the fixed set installs (contract section 10.1). install reads them from the installed file lists and fails when they differ from this list.",
+    "provided_by": {
+      "ansible-core": ["ansible", "ansible-config", "ansible-console", "ansible-doc", "ansible-galaxy", "ansible-inventory", "ansible-playbook", "ansible-pull", "ansible-test", "ansible-vault"],
+      "ansible": ["ansible-community"],
+      "ansible-lint": ["ansible-lint"]
+    },
+    "not_exposed": ["python", "python3", "python3.14", "pip", "pip3", "pip3.14", "black", "blackd", "cffi-gen-src", "distro", "jsonschema", "yamllint"],
+    "directory": "$HOME/.orbss-ansible-lint/bin",
+    "entries": "A symbolic link to the command in the virtual environment, except ansible-lint, which is a wrapper file.",
+    "ansible_lint_wrapper": {
+      "content": "A Bash script that puts the bin directory of the virtual environment first on PATH and then replaces itself with ansible-lint of the virtual environment (exec). Arguments and the exit status pass through unchanged.",
+      "reason": "ansible-lint 26.10.1 (ansiblelint/__main__.py, path_inject) puts the directory of its interpreter first on PATH for its child processes when that directory is not on PATH, and then prints 'WARNING: PATH altered to include ...'. With a plain link every lint run printed this warning. The wrapper sets the same PATH before ansible-lint starts, so the result is the same and the warning does not appear.",
+      "scope": "Only the ansible-lint process and the programs it starts see this PATH. Run steps do not. The other commands are plain links and get no PATH change."
+    }
+  },
+  "required_clis": {
+    "direct_commands": {
+      "list": ["ansible", "ansible-community", "ansible-galaxy", "ansible-lint"],
+      "basis": "src/commands/execute.yml and src/scripts/install-molecule-test-roles.sh call these four commands."
+    },
+    "runtime_clis": {
+      "list": ["ansible", "ansible-config", "ansible-doc", "ansible-galaxy", "ansible-playbook"],
+      "meaning": "Ansible commands that ansible-lint 26.10.1 with ansible-compat 26.10.0 starts as child processes. All are in the exposed list, so contract section 10.4 needs no change.",
+      "source_basis": [
+        {
+          "command": "ansible --version",
+          "where": "ansible_compat/config.py (ansible_version) and ansible_compat/runtime.py (Runtime.version)"
+        },
+        {"command": "ansible-config dump", "where": "ansible_compat/config.py (AnsibleConfig)"},
+        {"command": "ansible-doc --json -l -t <plugin type>", "where": "ansible_compat/runtime.py (Plugins)"},
+        {
+          "command": "ansible-galaxy collection list --format=json",
+          "where": "ansible_compat/runtime.py (Runtime.load_collections)"
+        },
+        {
+          "command": "ansible-galaxy role install -r <file> and ansible-galaxy collection install",
+          "where": "ansible_compat/runtime.py (install_requirements, install_collection). Used when the project has requirement files."
+        },
+        {
+          "command": "ansible-playbook --syntax-check",
+          "where": "ansiblelint/runner.py (Runner), ansiblelint/utils.py and ansible_compat/runtime.py (has_playbook). Used for each playbook."
+        }
+      ],
+      "local_trace": "On 2026-11-17 a run on tests/fixtures/normal/playbook.yml was traced with strace (execve), outside the selected image, with the fixed set on CPython 3.14.10. ansible-lint started ansible-config dump, ansible --version, ansible-galaxy collection list --format=json, ansible-playbook --syntax-check -vv playbook.yml and ansible-doc --json -l -t become. Each ran from the bin directory of the virtual environment.",
+      "ci_trace": "Check T8 of the minimal CI repeats the trace on the selected image with a Python audit hook and fails when ansible-lint starts an Ansible command that is not in this list or that resolves outside the managed environment."
+    },
+    "other_programs": [
+      {
+        "program": "/sbin/ldconfig -p",
+        "started_by": "Every ansible-core command and ansible-lint, when ansible/utils/display.py finds libc through ctypes.util.find_library.",
+        "resolution": "Absolute path. PATH is not used.",
+        "provided_by": "The base image. It is not part of the fixed set and is not exposed."
+      }
+    ],
+    "not_started": "The trace showed no git, python, pip, black or yamllint process. ansible-lint 26.10.1 can start a Markdown renderer only when it prints rule documentation, which execute does not request. execute itself still needs Git for roles from repositories (contract section 7.1).",
+    "path_inside_ansible_lint": "Inside the ansible-lint process the bin directory of the virtual environment is first on PATH. Its child processes therefore take the Ansible commands, and also python and pip, from the virtual environment. This is ansible-lint's own behavior and does not reach run steps."
+  },
+  "python_selection": {
+    "rule": "Contract section 8.1 (decision 06).",
+    "selection": "src/scripts/install.sh starts /home/circleci/.pyenv/versions/3.14.10/bin/python3.14 by this absolute path. It runs no python, python3 or pyenv command and reads no .python-version, PYENV_VERSION or other version-manager setting.",
+    "checks_before_creating": [
+      "The path is a regular file and executable (Bash).",
+      "sys.executable equals the recorded path, the version is exactly 3.14.10 and the release level is final.",
+      "The interpreter does not run inside a virtual environment.",
+      "The venv and ensurepip modules import, and the bundled pip is the recorded bootstrap pip."
+    ],
+    "on_failure": "install exits 1 with the category interpreter or virtual-environment. It creates and publishes nothing and starts no other Python.",
+    "isolation": "The interpreter and every Python that install starts run with -I. They ignore PYTHON* variables, the user site directory and the current directory.",
+    "consumer_settings": "install has no code that writes, deletes or changes .python-version, pyenv files or other version-manager configuration.",
+    "virtual_environment_check": "install does not create a trial virtual environment first. The checks above run before anything is created; creating the real virtual environment is the first action afterwards, and its failure stops install.",
+    "measured_by_minimal_ci": "The working directory of python-install-test holds a .python-version that names a version that is not installed. install, the four commands and execute must succeed there (T3 to T13), and the file must stay unchanged (T11, T14). The job also records what python3 on PATH does in that directory."
+  },
+  "managed_environment": {
+    "location": "$HOME/.orbss-ansible-lint",
+    "location_basis": "Under the home directory of the job user, which check P10 of python-image-lock.json found writable without sudo. Only this one directory is created. It is outside the default working directory ~/project.",
+    "location_guard": "install stops with the category location when this directory would be inside the current directory, CIRCLE_WORKING_DIRECTORY or an active virtual environment, or would contain one of them. This enforces contract section 9.1. A job whose working directory is the home directory is therefore rejected.",
+    "layout": {
+      "venv/": "Virtual environment created by the verified interpreter. It holds the fixed set.",
+      "bin/": "Only the exposed commands. This directory goes on PATH.",
+      "fixed-set.txt": "The requirement lines given to pip.",
+      "check/": "Working directory and HOME of the command check, so that the checked commands write nothing elsewhere.",
+      "state.json": "State record. install writes it last."
+    },
+    "state_record": {
+      "format": "JSON object with schema (1), orb ('orbss/ansible-lint'), fixed_set_sha256, interpreter (path and version) and complete (true).",
+      "completion_marker": "complete is the last key. install writes the record to a temporary file and renames it, as its last change of the environment, after parts 2 and 3 of the environment check pass.",
+      "orb_identifier": "The name of the Orb. A command cannot read the version of its Orb. Two Orb versions with different fixed information differ in fixed_set_sha256.",
+      "well_formed": "The directory is a real directory, state.json is a regular file of at most 65536 bytes, and it is a JSON object with orb, fixed_set_sha256 and interpreter of the expected types."
+    },
+    "environment_check": {
+      "record": "schema, orb, fixed_set_sha256 and interpreter equal the current values, and complete is true.",
+      "distributions": "The virtual environment answers with the verified interpreter's version and base prefix. The names and versions of all installed distributions equal the fixed set plus the bootstrap distributions.",
+      "commands": "The commands that the installed file lists provide equal the exposed list. bin/ holds exactly these names, each a correct link or the exact wrapper. Every command runs with --version and exits 0. ansible-lint also gets --offline, so the check does not ask GitHub for the latest release.",
+      "command_check_environment": "The environment of the step without ANSIBLE_*, PYTHON*, PIP_* and XDG_* variables and VIRTUAL_ENV, with bin/ in front of PATH and HOME set to check/home. The working directory is check/. The commands therefore read no file of the working directory and write only inside the managed environment."
+    },
+    "states": {
+      "S0": "The directory does not exist: create it, create the virtual environment, install, run 'pip check', create bin/, run parts 2 and 3, write the record, publish.",
+      "S1": "A well-formed record exists and all three parts pass: nothing is downloaded or installed. PATH is written again only when bin/ is not already first on PATH.",
+      "S2": "A well-formed record exists and a part fails: exit 1, category inconsistent-environment. No repair and no deletion.",
+      "S3": "The directory exists without a well-formed record: exit 1, category foreign-environment. No change.",
+      "S4": "Not detected until install runs again. Then it is S2."
+    },
+    "after_a_failed_new_installation": "install has no code that deletes. It leaves what it created, without a state record, because the record is written only after the checks pass. A later invocation in the same job then finds the directory without a record and stops as S3. Contract section 9.3 names S2 for this case in its last paragraph; the result is the same stop without changes.",
+    "not_compiled": "install passes --no-compile to pip. Python writes bytecode files inside the virtual environment when a module is first imported.",
+    "publication": "install appends two lines to the file named by BASH_ENV: a comment and 'export PATH=<bin>:\"$PATH\"'. This is its last action, after the record is written (S0) or the check passes (S1). It changes no other variable. It requires BASH_ENV before it creates anything.",
+    "existing_commands": "Before it creates anything, install looks up every exposed command on PATH. A command that resolves anywhere other than bin/ of the managed environment stops install with the category existing-command (contract section 8.3)."
+  },
+  "pip_isolation": {
+    "rule": "Contract section 11.",
+    "mechanism": [
+      "install removes every PIP_* and _PIP_* variable and ENSUREPIP_OPTIONS from the environment of the processes that create the virtual environment and run pip.",
+      "It sets PIP_CONFIG_FILE to /dev/null for them. pip then loads no configuration file of any level (pip 26.2.2, pip/_internal/configuration.py, _load_config_files).",
+      "pip runs with --isolated, so it does not read options from environment variables.",
+      "The command line fixes the rest: --index-url https://pypi.org/simple, --no-deps, --only-binary :all:, --no-cache-dir, --no-input, --disable-pip-version-check, and the requirement file with exact versions."
+    ],
+    "why_not_isolated_alone": "With --isolated alone, pip 26.2.2 still loads the global and site configuration files and the file named by PIP_CONFIG_FILE.",
+    "coverage": {
+      "source": "Index, extra index, find-links and trusted host can come only from the command line.",
+      "network": "pip proxy and certificate options are not read. Standard proxy and certificate variables of the process are neither set nor removed.",
+      "dependency_constraints": "No constraint, pre-release, upgrade-strategy or binary selection option is read. --no-deps and the exact pins decide.",
+      "destination": "No target, prefix, root or user option is read. pip runs as the interpreter of the virtual environment.",
+      "other": "No cache directory, verbosity, timeout, retry or keyring option is read."
+    },
+    "logging": "install prints the names of PIP_* variables and the pip configuration files that exist at the standard locations. It prints 'the file named by PIP_CONFIG_FILE' instead of that path. It prints no value.",
+    "later_steps": "install does not change these variables or files, so later steps see them as before."
+  },
+  "failure_handling": {
+    "common": "Every failure prints 'ansible-lint/install failed [<category>]: <reason>' to standard error and exits 1. Output of pip and of a failed command check is printed unchanged. Publishing is the last action, so no failure publishes a command. install starts no tool from PATH and has no code that deletes.",
+    "cases": [
+      {
+        "id": "F1",
+        "category": "platform",
+        "where": "Bash (uname) before the interpreter starts, and again in Python",
+        "evidence": "structural"
+      },
+      {
+        "id": "F2",
+        "category": "interpreter",
+        "where": "Bash (path) and Python (path, version, release level)",
+        "evidence": "structural; #5539 measures E5"
+      },
+      {
+        "id": "F3",
+        "category": "existing-command",
+        "where": "check_existing_commands, before anything is created",
+        "evidence": "structural; #5539 measures E7"
+      },
+      {
+        "id": "F4",
+        "category": "virtual-environment",
+        "where": "check_interpreter (modules, bundled pip) and the venv creation",
+        "evidence": "structural; #5539 measures it if reproducible"
+      },
+      {
+        "id": "F5",
+        "category": "permission",
+        "where": "create_environment (mkdir of the directory)",
+        "evidence": "structural; #5539 measures"
+      },
+      {
+        "id": "F6",
+        "category": "foreign-environment",
+        "where": "read_record",
+        "evidence": "structural; #5539 measures"
+      },
+      {
+        "id": "F7",
+        "category": "inconsistent-environment",
+        "where": "check_record and check_installation on an existing environment",
+        "evidence": "structural; #5539 measures a mismatch and a missing CLI"
+      },
+      {
+        "id": "F8",
+        "category": "none (success)",
+        "where": "main, existing environment branch",
+        "evidence": "structural; #5539 measures"
+      },
+      {
+        "id": "F9",
+        "category": "download-or-install",
+        "where": "pip install exits non-zero",
+        "evidence": "structural; #5539 measures"
+      },
+      {
+        "id": "F10",
+        "category": "download-or-install or dependency",
+        "where": "pip install or 'pip check' exits non-zero",
+        "evidence": "structural"
+      },
+      {
+        "id": "F11",
+        "category": "distributions",
+        "where": "check_installation, part 2",
+        "evidence": "structural; #5539 measures through F7"
+      },
+      {
+        "id": "F12",
+        "category": "none (success)",
+        "where": "pip_environment and ignored_pip_settings",
+        "evidence": "structural; #5539 measures"
+      },
+      {
+        "id": "F13",
+        "category": "none (success)",
+        "where": "main: publish is the last call",
+        "evidence": "minimal CI (T3 to T13); #5539"
+      }
+    ],
+    "additional_categories": {
+      "location": "The managed environment would overlap the working directory or an active virtual environment, or HOME is unusable.",
+      "publish": "BASH_ENV is missing or not writable.",
+      "command": "A command is missing or does not run after a new installation.",
+      "record": "Reason inside inconsistent-environment: the state record does not match."
+    },
+    "pre_ci_runs": "On 2026-11-17 the script was run outside the selected image with a CPython 3.14.10 placed at the interpreter path. S0, S1, the S2 and S3 cases, an existing command, a missing or different interpreter, an unreachable index, conflicting pip settings and a missing BASH_ENV behaved as described here. These runs are not evidence for the selected image and replace no measurement of #5539."
+  },
+  "measurement": {
+    "status": "pending",
+    "method": "The minimal CI job python-install-test runs .circleci/check-python-install.py in three separate run steps around the public install and execute of the candidate Orb, and stores the artifact python-install-evidence.",
+    "checks": {
+      "T0": "The checked-out source is the pipeline revision (CIRCLE_SHA1).",
+      "T1": "The fixed information in src/scripts/install.sh equals this record and names the verified interpreter of python-image-lock.json.",
+      "T2": "The job is clean: no managed environment, no ansible command on PATH, no publishing token, an empty working directory.",
+      "T3": "The state record is complete and names this Orb, the fixed set and the interpreter.",
+      "T4": "The managed environment is outside the working directory and the checkout.",
+      "T5": "The installed distributions equal the fixed set plus the bootstrap distributions.",
+      "T6": "In a separate step every exposed command resolves to bin/ of the managed environment, and bin/ holds nothing else.",
+      "T7": "The four direct commands run from the managed environment and report the recorded versions. ansible-core and the Ansible package are checked separately.",
+      "T8": "A traced run of the managed ansible-lint starts only recorded run-time CLIs as Ansible commands, each from the managed environment.",
+      "T9": "python, python3, pip and pip3 resolve as before install.",
+      "T10": "install changed only PATH for later steps.",
+      "T11": "The working directory, its .python-version and the pyenv version file are unchanged.",
+      "T12": "The real execute called the four commands in the expected order, each from the managed environment, each with exit status 0.",
+      "T13": "The final lint of execute processed the real Ansible file of the fixture with no violation.",
+      "T14": "After execute the working directory, the state record and the installed distributions are unchanged."
+    },
+    "results": "Filled from the CI evidence after the first successful run."
+  },
+  "circleci_runtime_verification": {
+    "status": "pending",
+    "fields_to_fill": ["commit", "job", "job_number", "job_url", "started_at", "stopped_at", "result", "observed_platform", "full_image_reference_verified_in", "evidence_sha256"],
+    "image_reference_rule": "Confirm the full reference cimg/python@sha256:<manifest_digest> in the job's Spin up environment log. Configuration alone is not evidence of the image that ran."
+  },
+  "minimal_ci": {
+    "config": ".circleci/test-deploy.yml",
+    "workflow": "test-deploy",
+    "job": "python-install-test",
+    "executor": "ansible-lint/python with default parameters, from the candidate commit's packed Orb injected by orb-tools/continue",
+    "steps": ["checkout to /tmp/ansible-lint-orb-source", "check-python-install.py before", "ansible-lint/install", "check-python-install.py after-install", "ansible-lint/execute", "check-python-install.py after-execute", "store_artifacts"],
+    "script": ".circleci/check-python-install.py",
+    "input": "tests/fixtures/normal/playbook.yml, a real playbook, copied into the empty working directory /tmp/ansible-lint-case. The check adds a .python-version that names a version that is not installed. ansible-lint counts that file as encountered and not as processed.",
+    "observers": "After install, the check puts observers in front of ansible-lint, ansible, ansible-community and ansible-galaxy. An observer passes arguments, environment and exit status through unchanged and records the call. This follows contract section 8.3: observers are set up after install.",
+    "artifact": "python-install-evidence",
+    "filters": "Runs on every branch and tag, like the other test-deploy jobs.",
+    "required_by": "orb-tools/publish (production, semantic-version tags only)",
+    "publishing_context": "None. The job needs no publishing context or token, and T2 fails when CIRCLE_TOKEN is present.",
+    "success_conditions": "All checks T0 to T14 pass, and every step of the job, including the public install and execute steps, exits 0.",
+    "pack_checks": "Both orb-tools/pack jobs (setup and continuation) run .circleci/verify-packed-install.sh on the actual archive: commands.install has no parameters and one run step, and its command equals src/scripts/install.sh of the commit. continue requires the setup pack and production publish requires the continuation pack, as before.",
+    "not_covered": [
+      "Failure cases and the other supported configurations (see handover_to_5539).",
+      "Comparison of default and execute with the 1.0.0 baseline (#5538)."
+    ],
+    "expansion": "#5539 merges this job into the required checks and keeps T0 to T14 and the publication dependency (contract section 19.2)."
+  },
+  "handover_to_5539": {
+    "required_measurements": [
+      "E2: install before checkout.",
+      "E3: a direct Docker job with the same digest.",
+      "E5 and F2: an image without the verified interpreter and without exposed commands.",
+      "E7 and F3: install on the existing default executor.",
+      "F4: an interpreter that cannot create a virtual environment, if reproducible.",
+      "F5: a managed location that is not writable.",
+      "F6: the directory exists without a valid record (S3).",
+      "F7 and F11: an inconsistent environment (S2), with a changed distribution and with a removed required CLI.",
+      "F8: a consistent second install in the same job (S1).",
+      "F9: an unreachable package index, without pip configuration.",
+      "F12: conflicting pip settings (contract section 11).",
+      "Non-default resource classes and an explicit image, from #5536.",
+      "The role, playbook and negative cases of the new path, and the comparison of results with the existing path."
+    ],
+    "structural_only": ["F1", "F10"],
+    "notes": [
+      "The trace of T8 lists only programs that the ansible-lint process starts itself.",
+      "The checks of this job expect the .python-version probe file, so ansible-lint reports one file processed of two encountered."
+    ]
+  },
+  "update_policy": {
+    "same_change": [
+      "src/scripts/install.sh (fixed information)",
+      "python-install-lock.json",
+      "python-image-lock.json and src/executors/python.yml when the image changes",
+      "README and CHANGELOG (set up by #5540)"
+    ],
+    "release_type": "A change of the fixed set is minor when the call and execution contract is kept and major otherwise. It is never patch, also for dependency-only fixes (contract section 14.1).",
+    "guarantee": "The exact versions fix the package set. They do not verify file hashes, do not prevent a release from being withdrawn, and do not make the whole result reproducible (contract section 12)."
+  }
+}

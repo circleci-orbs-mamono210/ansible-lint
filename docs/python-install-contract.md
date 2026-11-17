@@ -288,8 +288,9 @@ Overriding `image` is possible. Support covers only verified images
   environment to another job.
 - The implementation and the fixed set are part of the published Orb.
   A consumer repository needs no extra file.
-- The definition file is `src/commands/install.yml`. Script layout is chosen
-  by #5537.
+- The definition file is `src/commands/install.yml`. #5537 chose one script,
+  `src/scripts/install.sh`. It holds the implementation and the fixed
+  information, and the pack embeds it in the command.
 - A user who needs other versions can prepare their own environment and use
   `execute`. Such environments are outside this contract.
 
@@ -485,8 +486,9 @@ is therefore set up after `install`.
   this Orb.
 - It is outside the working directory and any checkout, outside system
   Python, and not inside an existing virtual environment.
-- The job user can write it without sudo. The exact path is a private detail
-  chosen by #5537. README tells users where it is (#5540).
+- The job user can write it without sudo. The exact path is a private detail.
+  #5537 chose `$HOME/.orbss-ansible-lint` and recorded it in
+  `python-install-lock.json`. README tells users where it is (#5540).
 - `install` creates the environment only when the target path does not exist.
 - `install` writes a state record inside the environment. The record holds at
   least the Orb identifier, a fixed-set identifier (for example a SHA-256 of
@@ -629,8 +631,10 @@ files at every level, including a file named by `PIP_CONFIG_FILE`, and all
 | Destination | Target, prefix, root, user installs | Not applied. Packages go only into the managed environment. |
 | Other behavior | Cache directory, verbosity, version check, timeout, retries, keyring | Not applied. |
 
-- #5537 chooses the mechanism, for example pip's isolated mode, and verifies
-  that it covers every category above.
+- #5537 chose the mechanism: no `PIP_*` variable reaches pip, pip gets the
+  null device as `PIP_CONFIG_FILE`, and pip runs in isolated mode. The
+  isolated mode alone does not cover every category.
+  `python-install-lock.json` records the mechanism and its coverage.
 - When `PIP_*` variables or pip configuration files are present, `install`
   prints their names and states that they were ignored. It never prints their
   values, because values can contain credentials.
@@ -660,8 +664,10 @@ This section implements decision 05 and design principle 4.
 - #5537 installs the first candidates on the selected image and resolves all
   Python dependencies. It then fixes the exact versions of the whole set and
   records the installed list with evidence.
-- The fixed information is part of the published Orb. #5537 chooses its
-  format and internal location. No file is needed in the consumer repository.
+- The fixed information is part of the published Orb. #5537 chose a JSON
+  object inside `src/scripts/install.sh`. `python-install-lock.json` records
+  the same object, its identifier, and its basis. No file is needed in the
+  consumer repository.
 - If the first candidates do not work, show the human the difference and the
   reason. After adoption, update this contract (section 20). Never adopt
   other versions silently.
@@ -914,11 +920,11 @@ change any proposal before adoption.
 | `cimg/python` digest, tag at selection, platform, index and manifest mapping, resolution time | #5536 | `python-image-lock.json`; section 6.1 of this document | The image for Python 3.14.10 |
 | Interpreter path and version, pip version, virtual environment check, Bash, Git | #5536 | `python-image-lock.json` | Python 3.14.10 |
 | Default value of `python.image` | #5536 | `src/executors/python.yml`; section 6.1 | The digest above |
-| Fixed set, including all transitive dependencies | #5537 | Fixed information in the Orb; its record | ansible-lint 26.10.1, Ansible package 14.5.0, ansible-core 2.21.5 |
-| Bootstrap distributions of the verified interpreter | #5537 | Fixed information | None |
-| Required run-time CLIs of the adopted ansible-lint | #5537 | Its record; README | None |
-| Exposed command list | #5537 | Fixed information; README | None |
-| Managed environment location and state record format | #5537 | Implementation; README states the location | None |
+| Fixed set, including all transitive dependencies | #5537 | Fixed information in `src/scripts/install.sh`; `python-install-lock.json` | ansible-lint 26.10.1, Ansible package 14.5.0, ansible-core 2.21.5 |
+| Bootstrap distributions of the verified interpreter | #5537 | Fixed information; `python-install-lock.json` | None |
+| Required run-time CLIs of the adopted ansible-lint | #5537 | Fixed information; `python-install-lock.json`; README | None |
+| Exposed command list | #5537 | Fixed information; `python-install-lock.json`; README | None |
+| Managed environment location and state record format | #5537 | `src/scripts/install.sh`; `python-install-lock.json`; README states the location | None |
 | How failure cases are reproduced | #5539 | `tests/README.md` and evidence | None |
 
 If a value cannot meet this contract, stop. Show the human the difference, the
