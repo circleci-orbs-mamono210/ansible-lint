@@ -69,7 +69,7 @@
     "runtime_clis": ["ansible", "ansible-config", "ansible-doc", "ansible-galaxy", "ansible-playbook"]
   },
   "fixed_set": {
-    "status": "Resolved and installed outside the selected image. The installation on the selected image is measured by the minimal CI (see measurement).",
+    "status": "Resolved outside the selected image. Installed and checked on the selected image in job 636 (see measurement).",
     "first_candidates": {"python": "3.14.10", "ansible-lint": "26.10.1", "ansible": "14.5.0", "ansible-core": "2.21.5"},
     "first_candidates_basis": "Decision 05: the measured versions of the existing GHCR image (image-lock.json). ansible is the Ansible package. ansible-core is a separate distribution.",
     "resolved_at": "2026-11-17T20:41:04+09:00",
@@ -294,12 +294,12 @@
         "sha256": "fc394a5b3be980a4062607b8fdddc0843f4fa394152b6da21722f5d59013c220"
       }
     ],
-    "file_scope": "file and sha256 name the wheel that the resolution selected. Every distribution has a wheel for CPython 3.14 on x86_64 Linux, so install uses --only-binary :all: and builds nothing. install pins versions only. It does not verify these hashes (contract section 12).",
+    "file_scope": "file and sha256 name the wheel that the resolution selected. Every distribution has a wheel for CPython 3.14 on x86_64 Linux, so install uses --only-binary :all: and builds nothing. The install step log of job 636 names the same 30 files. install pins versions only. It does not verify these hashes (contract section 12).",
     "dependency_check": "After installing, install runs 'pip check'. A missing or conflicting requirement fails install."
   },
   "bootstrap_distributions": {
     "pip": "26.2.2",
-    "basis": "The pip that the verified interpreter puts into a new virtual environment. Check P8 of python-image-lock.json measured pip 26.2.2 in job 602. Lib/ensurepip/__init__.py of CPython v3.14.10 sets _PIP_VERSION to 26.2.2.",
+    "basis": "The pip that the verified interpreter puts into a new virtual environment. Check P8 of python-image-lock.json measured pip 26.2.2 in job 602. Lib/ensurepip/__init__.py of CPython v3.14.10 sets _PIP_VERSION to 26.2.2. Check T5 of job 636 found pip 26.2.2 in the managed environment.",
     "handling": "The fixed set does not pin pip, so install does not upgrade it. Before it creates anything, install requires that the interpreter bundles this version. The distribution check expects the fixed set plus this pip and nothing else."
   },
   "exposed_commands": {
@@ -348,7 +348,7 @@
         }
       ],
       "local_trace": "On 2026-11-17 a run on tests/fixtures/normal/playbook.yml was traced with strace (execve), outside the selected image, with the fixed set on CPython 3.14.10. ansible-lint started ansible-config dump, ansible --version, ansible-galaxy collection list --format=json, ansible-playbook --syntax-check -vv playbook.yml and ansible-doc --json -l -t become. Each ran from the bin directory of the virtual environment.",
-      "ci_trace": "Check T8 of the minimal CI repeats the trace on the selected image with a Python audit hook and fails when ansible-lint starts an Ansible command that is not in this list or that resolves outside the managed environment."
+      "ci_trace": "Check T8 of the minimal CI repeats the trace on the selected image with a Python audit hook and fails when ansible-lint starts an Ansible command that is not in this list or that resolves outside the managed environment. In job 636 ansible-lint started the same five commands as in the local trace, each from the bin directory of the virtual environment."
     },
     "other_programs": [
       {
@@ -356,9 +356,15 @@
         "started_by": "Every ansible-core command and ansible-lint, when ansible/utils/display.py finds libc through ctypes.util.find_library.",
         "resolution": "Absolute path. PATH is not used.",
         "provided_by": "The base image. It is not part of the fixed set and is not exposed."
+      },
+      {
+        "program": "/usr/sbin/ifconfig",
+        "started_by": "Seen only in job 636, without arguments. The call has the form that Lib/uuid.py of CPython uses to look for a network address (_get_command_stdout). Which module asked for it was not examined.",
+        "resolution": "Absolute path in the trace. Lib/uuid.py searches PATH and then /sbin and /usr/sbin.",
+        "provided_by": "The base image. It is not part of the fixed set and is not exposed. Lib/uuid.py goes on without it when it is missing."
       }
     ],
-    "not_started": "The trace showed no git, python, pip, black or yamllint process. ansible-lint 26.10.1 can start a Markdown renderer only when it prints rule documentation, which execute does not request. execute itself still needs Git for roles from repositories (contract section 7.1).",
+    "not_started": "The traces showed no git, python, pip, black or yamllint process. ansible-lint 26.10.1 can start a Markdown renderer only when it prints rule documentation, which execute does not request. execute itself still needs Git for roles from repositories (contract section 7.1).",
     "path_inside_ansible_lint": "Inside the ansible-lint process the bin directory of the virtual environment is first on PATH. Its child processes therefore take the Ansible commands, and also python and pip, from the virtual environment. This is ansible-lint's own behavior and does not reach run steps."
   },
   "python_selection": {
@@ -374,7 +380,7 @@
     "isolation": "The interpreter and every Python that install starts run with -I. They ignore PYTHON* variables, the user site directory and the current directory.",
     "consumer_settings": "install has no code that writes, deletes or changes .python-version, pyenv files or other version-manager configuration.",
     "virtual_environment_check": "install does not create a trial virtual environment first. The checks above run before anything is created; creating the real virtual environment is the first action afterwards, and its failure stops install.",
-    "measured_by_minimal_ci": "The working directory of python-install-test holds a .python-version that names a version that is not installed. install, the four commands and execute must succeed there (T3 to T13), and the file must stay unchanged (T11, T14). The job also records what python3 on PATH does in that directory."
+    "measured_by_minimal_ci": "The working directory of python-install-test holds a .python-version that names a version that is not installed. In job 636, python3 on PATH (the pyenv shim) ran there with exit status 0, printed 'Python 3.12.3' and wrote no message. pyenv 2.8.14, the version measured in job 602, searches the system PATH when the named version is not installed (libexec/pyenv-which), which explains this result. install was not affected. The managed environment uses Python 3.14.10 (main, Oct 26 2026, 22:11:46) [GCC 13.3.0] (/home/circleci/.orbss-ansible-lint/venv/bin/python), base prefix /home/circleci/.pyenv/versions/3.14.10. The four commands and execute succeeded there (T3 to T13), and the file stayed unchanged (T11, T14)."
   },
   "managed_environment": {
     "location": "$HOME/.orbss-ansible-lint",
@@ -509,7 +515,7 @@
         "id": "F13",
         "category": "none (success)",
         "where": "main: publish is the last call",
-        "evidence": "minimal CI (T3 to T13); #5539"
+        "evidence": "measured in job 636 (T3 to T13); #5539"
       }
     ],
     "additional_categories": {
@@ -521,7 +527,7 @@
     "pre_ci_runs": "On 2026-11-17 the script was run outside the selected image with a CPython 3.14.10 placed at the interpreter path. S0, S1, the S2 and S3 cases, an existing command, a missing or different interpreter, an unreachable index, conflicting pip settings and a missing BASH_ENV behaved as described here. These runs are not evidence for the selected image and replace no measurement of #5539."
   },
   "measurement": {
-    "status": "pending",
+    "status": "passed",
     "method": "The minimal CI job python-install-test runs .circleci/check-python-install.py in three separate run steps around the public install and execute of the candidate Orb, and stores the artifact python-install-evidence.",
     "checks": {
       "T0": "The checked-out source is the pipeline revision (CIRCLE_SHA1).",
@@ -540,11 +546,287 @@
       "T13": "The final lint of execute processed the real Ansible file of the fixture with no violation.",
       "T14": "After execute the working directory, the state record and the installed distributions are unchanged."
     },
-    "results": "Filled from the CI evidence after the first successful run."
+    "results": {
+      "evidence": "Job 636 of commit ba1eab8151443d7f740af69d6790ca23ed414562 (see circleci_runtime_verification).",
+      "observed_at": {
+        "before": "2026-11-17T12:21:13.522365+00:00",
+        "after-install": "2026-11-17T12:21:42.082417+00:00",
+        "after-execute": "2026-11-17T12:21:49.866313+00:00"
+      },
+      "summary": "T0 to T14 passed.",
+      "checks": {
+        "T0": true,
+        "T1": true,
+        "T2": true,
+        "T3": true,
+        "T4": true,
+        "T5": true,
+        "T6": true,
+        "T7": true,
+        "T8": true,
+        "T9": true,
+        "T10": true,
+        "T11": true,
+        "T12": true,
+        "T13": true,
+        "T14": true
+      },
+      "copied_from_evidence": "The values below are copied from python-install.json without change, except where a line says that it is a summary.",
+      "installed_distributions": {
+        "summary": "The 31 installed distributions equal fixed_information.distributions plus pip 26.2.2. No difference (T5).",
+        "ansible_lint": "26.10.1",
+        "ansible_package": "14.5.0",
+        "ansible_core": "2.21.5",
+        "prefix": "/home/circleci/.orbss-ansible-lint/venv",
+        "base_prefix": "/home/circleci/.pyenv/versions/3.14.10",
+        "python_version": "3.14.10"
+      },
+      "state_record": {
+        "schema": 1,
+        "orb": "orbss/ansible-lint",
+        "fixed_set_sha256": "1fbfcfefef86ba00fcefe9b340e3024e4d4f21e45a13f568c192e4234a389d85",
+        "interpreter": {"path": "/home/circleci/.pyenv/versions/3.14.10/bin/python3.14", "version": "3.14.10"},
+        "complete": true
+      },
+      "state_record_sha256": "270a1974c94590731fadaaa52cb2580782b0d7b1f40b4da3c2d9b126aad44b64",
+      "command_resolution": {
+        "summary": "In the step after install, each of the 12 exposed commands resolved to /home/circleci/.orbss-ansible-lint/bin/<name>. ansible-lint is the wrapper file; the others are links into /home/circleci/.orbss-ansible-lint/venv/bin (T6).",
+        "direct_commands": {
+          "ansible_lint": "26.10.1",
+          "ansible_lint_reports": {"ansible_core": "2.21.5", "ansible_compat": "26.10.0", "ruamel_yaml": "0.19.1"},
+          "ansible_core": "2.21.5",
+          "ansible_package": "14.5.0",
+          "ansible_galaxy_core": "2.21.5",
+          "ansible_executable_location": "/home/circleci/.orbss-ansible-lint/bin/ansible",
+          "ansible_python_version": "3.14.10",
+          "ansible_python_executable": "/home/circleci/.orbss-ansible-lint/venv/bin/python",
+          "exit_codes": {"ansible": 0, "ansible-community": 0, "ansible-galaxy": 0, "ansible-lint": 0}
+        },
+        "python_build_reported_by_ansible": "python version = 3.14.10 (main, Oct 26 2026, 22:11:46) [GCC 13.3.0] (/home/circleci/.orbss-ansible-lint/venv/bin/python)"
+      },
+      "runtime_cli_trace": {
+        "ansible_commands": [
+          {
+            "argv": ["ansible-config", "dump"],
+            "resolved": "/home/circleci/.orbss-ansible-lint/venv/bin/ansible-config"
+          },
+          {
+            "argv": ["ansible", "--version"],
+            "resolved": "/home/circleci/.orbss-ansible-lint/venv/bin/ansible"
+          },
+          {
+            "argv": ["ansible-galaxy", "collection", "list", "--format=json"],
+            "resolved": "/home/circleci/.orbss-ansible-lint/venv/bin/ansible-galaxy"
+          },
+          {
+            "argv": ["ansible-playbook", "--syntax-check", "-vv", "playbook.yml"],
+            "resolved": "/home/circleci/.orbss-ansible-lint/venv/bin/ansible-playbook"
+          },
+          {
+            "argv": ["ansible-doc", "--json", "-l", "-t", "become"],
+            "resolved": "/home/circleci/.orbss-ansible-lint/venv/bin/ansible-doc"
+          }
+        ],
+        "other_programs": [
+          {
+            "argv": ["/sbin/ldconfig", "-p"],
+            "resolved": "/sbin/ldconfig"
+          },
+          {
+            "argv": ["/usr/sbin/ifconfig"],
+            "resolved": "/usr/sbin/ifconfig"
+          }
+        ],
+        "method": "Python audit hook subprocess.Popen in the ansible-lint process. Programs started by its child processes are not listed."
+      },
+      "effect_on_later_steps": {
+        "path_before": "/home/circleci/.pyenv/shims:/home/circleci/.pyenv/bin:/home/circleci/.poetry/bin:/home/circleci/bin:/home/circleci/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+        "path_after": "/home/circleci/.orbss-ansible-lint/bin:/home/circleci/.pyenv/shims:/home/circleci/.pyenv/bin:/home/circleci/.poetry/bin:/home/circleci/bin:/home/circleci/.local/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+        "bash_env_added_text": "\n# orbss/ansible-lint install: Ansible commands of the managed environment\nexport PATH=/home/circleci/.orbss-ansible-lint/bin:\"$PATH\"\n",
+        "changed_variable_names": ["PATH"],
+        "python_and_pip": {
+          "python": {"path": "/home/circleci/.pyenv/shims/python", "realpath": "/home/circleci/.pyenv/shims/python"},
+          "python3": {"path": "/home/circleci/.pyenv/shims/python3", "realpath": "/home/circleci/.pyenv/shims/python3"},
+          "pip": {"path": "/home/circleci/.pyenv/shims/pip", "realpath": "/home/circleci/.pyenv/shims/pip"},
+          "pip3": {"path": "/home/circleci/.pyenv/shims/pip3", "realpath": "/home/circleci/.pyenv/shims/pip3"},
+          "pyenv": {"path": "/home/circleci/.pyenv/bin/pyenv", "realpath": "/home/circleci/.pyenv/libexec/pyenv"}
+        }
+      },
+      "python3_on_path_in_working_directory": {
+        "command": ["python3", "--version"],
+        "cwd": "/tmp/ansible-lint-case",
+        "exit_code": 0,
+        "stdout": "Python 3.12.3\n",
+        "stderr": ""
+      },
+      "execute": {
+        "calls": [
+          {
+            "index": 0,
+            "name": "ansible-lint",
+            "arguments": ["--version"],
+            "real": "/home/circleci/.orbss-ansible-lint/bin/ansible-lint",
+            "exit_code": 0
+          },
+          {
+            "index": 1,
+            "name": "ansible",
+            "arguments": ["--version"],
+            "real": "/home/circleci/.orbss-ansible-lint/bin/ansible",
+            "exit_code": 0
+          },
+          {
+            "index": 2,
+            "name": "ansible-community",
+            "arguments": ["--version"],
+            "real": "/home/circleci/.orbss-ansible-lint/bin/ansible-community",
+            "exit_code": 0
+          },
+          {
+            "index": 3,
+            "name": "ansible-lint",
+            "arguments": [],
+            "real": "/home/circleci/.orbss-ansible-lint/bin/ansible-lint",
+            "exit_code": 0
+          }
+        ],
+        "lint_summary": "Passed: 0 failure(s), 0 warning(s) in 1 files processed of 2 encountered.",
+        "lint_numbers": [0, 0, 1, 2],
+        "files_in_working_directory": [".python-version", "playbook.yml"],
+        "lint_stderr_lines": [
+          "WARNING  Project directory /.ansible cannot be used for caching as it is not writable.",
+          "WARNING  Using unique temporary directory /tmp/.ansible-0aaa for caching.",
+          "/home/circleci/.orbss-ansible-lint/venv/lib/python3.14/site-packages/ansible_compat/runtime.py:243: UserWarning: Project directory /.ansible cannot be used for caching as it is not writable.",
+          "  self.cache_dir = get_cache_dir(self.project_dir, isolated=self.isolated)",
+          "/home/circleci/.orbss-ansible-lint/venv/lib/python3.14/site-packages/ansible_compat/runtime.py:243: UserWarning: Using unique temporary directory /tmp/.ansible-0aaa for caching.",
+          "  self.cache_dir = get_cache_dir(self.project_dir, isolated=self.isolated)",
+          "",
+          "Passed: 0 failure(s), 0 warning(s) in 1 files processed of 2 encountered. Last profile that met the validation criteria was 'production'.",
+          "A new release of ansible-lint is available: 26.10.1 \u2192 26.11.0 Upgrade by running: pip install --upgrade ansible-lint"
+        ]
+      },
+      "fixture_sha256": {
+        ".python-version": "d7f08d3a3a5299f5b262403f7b3058649398964f5d5d85ea67cbe73582d90c1e",
+        "playbook.yml": "626998d2b6e3802db93f86101b1556a1da045f7c065421dd120cc9595775816e"
+      },
+      "notes": [
+        "The lint of execute printed warnings that /.ansible is not writable and that a temporary directory is used for caching. The fixture has no project marker, so ansible-lint takes / as the project directory (tests/README.md describes this for the normal fixture). The warnings are not a lint finding, and the summary reports 0 failures and 0 warnings.",
+        "normal-test of the same pipeline, on the existing path with the same playbook, printed no such warning. The reason for this difference between the images was not examined.",
+        "The release notice of ansible-lint names 'pip install --upgrade ansible-lint' on the new path and 'pip3 install --user --upgrade ansible-lint' on the existing path. install runs no such command.",
+        "ansible-lint reported one file processed of two encountered, because the .python-version probe file counts as encountered.",
+        "The job did not list the home directory before and after install. That install creates nothing there except the managed environment is shown by the source only (managed_environment), not by this job."
+      ]
+    }
   },
   "circleci_runtime_verification": {
-    "status": "pending",
-    "fields_to_fill": ["commit", "job", "job_number", "job_url", "started_at", "stopped_at", "result", "observed_platform", "full_image_reference_verified_in", "evidence_sha256"],
+    "status": "verified",
+    "commit": "ba1eab8151443d7f740af69d6790ca23ed414562",
+    "commit_url": "https://github.com/circleci-orbs-mamono210/ansible-lint/commit/ba1eab8151443d7f740af69d6790ca23ed414562",
+    "commit_scope": "The later commit that adds these results changes only this file. Its CI runs are not recorded here.",
+    "branch": "5537",
+    "pipeline_id": "7f8debea-f1ab-4818-955e-f3f4c11c0cbf",
+    "pipeline_result": "All 14 jobs succeeded: lint, pack, review, shellcheck and continue of lint-pack, and pack and the eight test jobs of test-deploy.",
+    "workflow": "test-deploy",
+    "workflow_id": "482f0120-a475-4300-838c-8dff0061c820",
+    "job": "python-install-test",
+    "job_number": 636,
+    "job_id": "9631b239-3375-4679-91f6-25fdd9ba467e",
+    "job_url": "https://circleci.com/gh/circleci-orbs-mamono210/ansible-lint/636",
+    "started_at": "2026-11-17T12:20:53.667Z",
+    "stopped_at": "2026-11-17T12:21:50.426Z",
+    "result": "success",
+    "steps": [
+      {
+        "name": "Require a clean job and prepare the fixture",
+        "started_at": "2026-11-17T12:21:13.45Z",
+        "stopped_at": "2026-11-17T12:21:13.704Z",
+        "exit_code": 0
+      },
+      {
+        "name": "Install the pinned Ansible lint tool set",
+        "started_at": "2026-11-17T12:21:13.756Z",
+        "stopped_at": "2026-11-17T12:21:34.578Z",
+        "exit_code": 0
+      },
+      {
+        "name": "Check the managed environment and command resolution in a separate step",
+        "started_at": "2026-11-17T12:21:34.691Z",
+        "stopped_at": "2026-11-17T12:21:42.102Z",
+        "exit_code": 0
+      },
+      {
+        "name": "Show Ansible lint version",
+        "started_at": "2026-11-17T12:21:42.147Z",
+        "stopped_at": "2026-11-17T12:21:43.22Z",
+        "exit_code": 0
+      },
+      {
+        "name": "Show Ansible version",
+        "started_at": "2026-11-17T12:21:43.264Z",
+        "stopped_at": "2026-11-17T12:21:44.199Z",
+        "exit_code": 0
+      },
+      {
+        "name": "Install the role and dependent roles for Molecule tests",
+        "started_at": "2026-11-17T12:21:44.253Z",
+        "stopped_at": "2026-11-17T12:21:44.269Z",
+        "exit_code": 0
+      },
+      {
+        "name": "Execute Ansible lint",
+        "started_at": "2026-11-17T12:21:44.32Z",
+        "stopped_at": "2026-11-17T12:21:49.622Z",
+        "exit_code": 0
+      },
+      {
+        "name": "Require that the real execute used the managed environment without a violation",
+        "started_at": "2026-11-17T12:21:49.673Z",
+        "stopped_at": "2026-11-17T12:21:49.889Z",
+        "exit_code": 0
+      }
+    ],
+    "install_step_note": "The install step, a new installation, took about 21 seconds on the small resource class.",
+    "observed_platform": "linux/amd64",
+    "full_image_reference_verified_in": "Spin up environment",
+    "spin_up_log": {
+      "container_line": "Starting container cimg/python@sha256:1e39aeaaf097598f60e55e42ee57289448a97dea346a9c8f53e3af70b50ac7db",
+      "matches_selected_image_reference": true,
+      "pull_line": "image cache not found on this host, downloading docker.io/cimg/python@sha256:1e39aeaaf097598f60e55e42ee57289448a97dea346a9c8f53e3af70b50ac7db",
+      "pull_stats": "download 257MiB in 16.435s (15.64MiB/s)",
+      "system": "OSType linux, Architecture amd64, Kernel Version 7.0.0-1017-aws, v2 container runtime"
+    },
+    "image_pull": "Pulled in this job from Docker Hub by the full digest reference. Job 602 of python-image-lock.json started the same reference from the host's image cache.",
+    "pack_checks": [
+      {
+        "purpose": "injection",
+        "workflow": "lint-pack",
+        "job": "orb-tools/pack",
+        "job_number": 630,
+        "job_id": "ffea56d0-3c86-4ba1-b754-00479e00b459",
+        "archive_sha256": "e4ea03344d5de64cf32feb2e9592149cd45fcab80e84a167528b7cbdcca890b6"
+      },
+      {
+        "purpose": "publication",
+        "workflow": "test-deploy",
+        "job": "orb-tools/pack",
+        "job_number": 634,
+        "job_id": "0b64bd03-4ca9-43ad-837a-6534eb5de0ed",
+        "archive_sha256": "fc4d77f066c6c2555284dce62cdae48d681cead3689c5d44c539a7d0fae3590d"
+      }
+    ],
+    "pack_check_result": {
+      "script": ".circleci/verify-packed-install.sh",
+      "result": "passed in both jobs",
+      "source_tree": "035d4034c49b91bd0d13b430d13cf52c945872b5",
+      "install_command_sha256": "7eb01b8a80bcc3879120ec0de4ed21bafe971f3e795deb8923dc6758407a234e",
+      "fixed_set_sha256": "1fbfcfefef86ba00fcefe9b340e3024e4d4f21e45a13f568c192e4234a389d85",
+      "compiled_command": "The install step of job 636 shows the command with << in place of the packed \\<<."
+    },
+    "artifact_directory": "python-install-evidence",
+    "artifact_files": ["before.json", "after-install.json", "after-execute.json", "python-install.json"],
+    "evidence_size_bytes": {"python-install.json": 30885},
+    "evidence_sha256": {"python-install.json": "f737f7def1fda9052a1a5d6afdf4252151140add0f93be862c858e44cd3f6b18"},
+    "evidence_sha256_basis": "Computed over the evidence content rebuilt from the log of the last check step, not over a downloaded copy of the artifact. check-python-install.py prints the same JSON that it writes, and the file adds one newline. The rebuilt step output, including its final newline, is 32125 bytes, equal to the step's stdout size reported by CircleCI. The rebuilt phase files are 4068, 18007 and 5754 bytes; the upload step reports 4.1 kB, 18 kB and 5.8 kB, and 31 kB for python-install.json.",
     "image_reference_rule": "Confirm the full reference cimg/python@sha256:<manifest_digest> in the job's Spin up environment log. Configuration alone is not evidence of the image that ran."
   },
   "minimal_ci": {
@@ -587,7 +869,10 @@
     "structural_only": ["F1", "F10"],
     "notes": [
       "The trace of T8 lists only programs that the ansible-lint process starts itself.",
-      "The checks of this job expect the .python-version probe file, so ansible-lint reports one file processed of two encountered."
+      "The checks of this job expect the .python-version probe file, so ansible-lint reports one file processed of two encountered.",
+      "On the selected image the lint of this fixture prints warnings about /.ansible on the new path and not on the existing path (measurement.results.notes). The comparison of results has to take this into account, for example with a project marker in the fixture.",
+      "The trace of job 636 also showed /usr/sbin/ifconfig (required_clis.other_programs).",
+      "Not measured yet: that install creates nothing in the home directory except the managed environment. List the home directory before and after install."
     ]
   },
   "update_policy": {
