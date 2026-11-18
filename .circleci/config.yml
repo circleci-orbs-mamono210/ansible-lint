@@ -21,6 +21,12 @@ workflows:
                 name: Verify the actual injection archive preserves the exit code
                 command: bash .circleci/verify-packed-orb.sh dist/orb_source.tar.gz injection
             - run:
+                name: Self-test the exact baseline comparison used below
+                command: bash .circleci/test-compare-baseline.sh injection
+            - run:
+                name: Verify the actual injection archive keeps the published 1.0.0 default and execute
+                command: bash .circleci/verify-packed-baseline.sh dist/orb_source.tar.gz injection
+            - run:
                 name: Verify the actual injection archive holds this commit's install command
                 command: bash .circleci/verify-packed-install.sh dist/orb_source.tar.gz injection
             - store_artifacts:
