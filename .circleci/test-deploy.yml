@@ -65,6 +65,10 @@ commands:
         type: string
       title:
         type: string
+      # Only the phase "before" takes a case. The default is the case "normal".
+      case:
+        type: string
+        default: ""
     steps:
       - run:
           name: << parameters.title >>
@@ -72,7 +76,57 @@ commands:
           command: >-
             /home/circleci/.pyenv/versions/3.14.10/bin/python3.14 -I
             /tmp/ansible-lint-orb-source/.circleci/check-python-install.py
-            << parameters.phase >> /tmp/ansible-lint-orb-source
+            << parameters.phase >> /tmp/ansible-lint-orb-source << parameters.case >>
+  python-path:
+    # The standard order of the new path, checkout, install and execute, with
+    # the three check phases around the public steps (#5539).
+    parameters:
+      case:
+        type: string
+      molecule-role-test:
+        type: boolean
+        default: false
+      molecule-playbook-test:
+        type: boolean
+        default: false
+    steps:
+      - checkout:
+          path: /tmp/ansible-lint-orb-source
+      - check-python-install:
+          phase: before
+          case: << parameters.case >>
+          title: Require a clean job and prepare the fixture
+      - ansible-lint/install
+      - check-python-install:
+          phase: after-install
+          title: Check the managed environment and command resolution in a separate step
+      - ansible-lint/execute:
+          molecule-role-test: << parameters.molecule-role-test >>
+          molecule-playbook-test: << parameters.molecule-playbook-test >>
+      - check-python-install:
+          phase: after-execute
+          title: Require the expected calls, dependencies and lint result of the real execute
+      - store_artifacts:
+          path: /tmp/ansible-lint-python-install-evidence
+          destination: python-install-evidence
+  check-install-script:
+    # Runs src/scripts/install.sh of this commit under one controlled
+    # condition. It is not the public step; see tests/README.md.
+    parameters:
+      scenario:
+        type: string
+      title:
+        type: string
+      python:
+        type: string
+        default: /home/circleci/.pyenv/versions/3.14.10/bin/python3.14
+    steps:
+      - run:
+          name: << parameters.title >>
+          command: >-
+            << parameters.python >> -I
+            /tmp/ansible-lint-orb-source/.circleci/check-install-script.py
+            /tmp/ansible-lint-orb-source << parameters.scenario >>
 
 jobs:
   normal-test:
@@ -162,7 +216,7 @@ jobs:
   python-executor-test:
     # Minimal check of #5536: the default python executor of this commit's
     # packed Orb pulls, starts and has the prerequisites for install.
-    # #5539 expands this check; keep its success conditions when merging jobs.
+    # #5539 keeps this job and its conditions P0 to P11 (tests/README.md).
     executor: ansible-lint/python
     steps:
       - checkout:
@@ -178,7 +232,8 @@ jobs:
     # the public install of this commit's packed Orb prepares the tools, and
     # separate steps show that the four direct commands and the real execute
     # use the managed environment. The input is a real playbook.
-    # #5539 expands this check; keep its success conditions when merging jobs.
+    # #5539 keeps this job and its conditions T0 to T14, and adds T15 and T16
+    # and the jobs below (tests/README.md).
     executor: ansible-lint/python
     working_directory: /tmp/ansible-lint-case
     steps:
@@ -199,6 +254,276 @@ jobs:
       - store_artifacts:
           path: /tmp/ansible-lint-python-install-evidence
           destination: python-install-evidence
+  # --- New path: the inputs of the existing six categories (#5539) ---------
+  python-role-test:
+    executor: ansible-lint/python
+    working_directory: /tmp/ansible-lint-case
+    steps:
+      - python-path:
+          case: role
+          molecule-role-test: true
+  python-playbook-test:
+    executor: ansible-lint/python
+    working_directory: /tmp/ansible-lint-case
+    steps:
+      - python-path:
+          case: playbook
+          molecule-playbook-test: true
+  python-molecule-test:
+    # Both flags are false, and Molecule requirements exist.
+    executor: ansible-lint/python
+    working_directory: /tmp/ansible-lint-case
+    steps:
+      - python-path:
+          case: molecule
+  python-negative-test:
+    executor: ansible-lint/python
+    working_directory: /tmp/ansible-lint-case
+    steps:
+      - checkout:
+          path: /tmp/ansible-lint-orb-source
+      - check-python-install:
+          phase: self-test
+          title: Self-test the exact classification of the lint failure used below
+      - check-python-install:
+          phase: before
+          case: negative
+          title: Require a clean job and prepare the fixture
+      - ansible-lint/install
+      - check-python-install:
+          phase: after-install
+          title: Check the managed environment and command resolution in a separate step
+      - ansible-lint/execute
+      - check-python-install:
+          phase: after-execute
+          title: Require the exact real violation and one no-argument lint invocation
+      - store_artifacts:
+          path: /tmp/ansible-lint-python-install-evidence
+          destination: python-install-evidence
+  python-resource-class-test:
+    executor:
+      name: ansible-lint/python
+      resource_class: medium
+    working_directory: /tmp/ansible-lint-case
+    steps:
+      - python-path:
+          case: resource-class
+          molecule-playbook-test: true
+  # --- New path: other supported uses ------------------------------------
+  python-direct-docker-test:
+    # Contract E3: a job that names the verified digest itself. Both pack jobs
+    # require this reference to equal python-image-lock.json.
+    docker:
+      - image: cimg/python@sha256:1e39aeaaf097598f60e55e42ee57289448a97dea346a9c8f53e3af70b50ac7db
+    resource_class: small
+    working_directory: /tmp/ansible-lint-case
+    steps:
+      - python-path:
+          case: normal
+  python-install-first-test:
+    # Contract E2: install before the checkout. No file of this repository
+    # exists before the checkout, so an inline step records the state first.
+    executor: ansible-lint/python
+    working_directory: /tmp/ansible-lint-case
+    steps:
+      - run:
+          name: Record the state before install, without a checkout
+          command: |
+            state=/tmp/ansible-lint-python-install-state/pre-install
+            mkdir -p "$state"
+            printf '%s\n' "$PATH" > "$state/path"
+            for name in python python3 pip pip3 pyenv; do
+              printf '%s=%s\n' "$name" "$(command -v "$name" || true)"
+            done > "$state/commands"
+            printf '%s\n' "$BASH_ENV" > "$state/bash-env-path"
+            if [ -e "$BASH_ENV" ]; then cat "$BASH_ENV"; fi > "$state/bash-env"
+            ls -A "$HOME" > "$state/home"
+            find "$HOME" -mindepth 1 \( -type d -printf 'd\t%P\n' \) -o -printf '%y\t%s\t%T@\t%P\n' > "$state/home-entries"
+            { compgen -c ansible || true; } | sort -u > "$state/ansible-commands"
+            if [ -e "$HOME/.orbss-ansible-lint" ]; then echo yes; else echo no; fi > "$state/managed"
+            if [ -n "${CIRCLE_TOKEN:-}" ]; then echo yes; else echo no; fi > "$state/token"
+            ls -A . > "$state/working-directory"
+      - ansible-lint/install
+      - run:
+          # The checkout below adds ~/.ssh, so the home directory is listed
+          # here, directly after install. The managed environment is left out.
+          name: Record the home directory after install, before the checkout
+          command: |
+            state=/tmp/ansible-lint-python-install-state/pre-install
+            ls -A "$HOME" > "$state/home-after-install"
+            find "$HOME" -mindepth 1 -path "$HOME/.orbss-ansible-lint" -prune -o \( -type d -printf 'd\t%P\n' \) -o -printf '%y\t%s\t%T@\t%P\n' > "$state/home-entries-after-install"
+      - checkout:
+          path: /tmp/ansible-lint-orb-source
+      - run:
+          name: Require a clean job before install, an empty working directory, and prepare the fixture
+          command: >-
+            /home/circleci/.pyenv/versions/3.14.10/bin/python3.14 -I
+            /tmp/ansible-lint-orb-source/.circleci/check-python-install.py
+            before /tmp/ansible-lint-orb-source plain
+            /tmp/ansible-lint-python-install-state/pre-install
+      - check-python-install:
+          phase: after-install
+          title: Check the managed environment and command resolution in a separate step
+      - ansible-lint/execute
+      - check-python-install:
+          phase: after-execute
+          title: Require the expected calls and lint result of the real execute
+      - store_artifacts:
+          path: /tmp/ansible-lint-python-install-evidence
+          destination: python-install-evidence
+  python-reinstall-test:
+    # Contract S1 and S2 (F7, F8, F11): install again in the same job.
+    executor: ansible-lint/python
+    working_directory: /tmp/ansible-lint-case
+    steps:
+      - checkout:
+          path: /tmp/ansible-lint-orb-source
+      - check-python-install:
+          phase: before
+          case: plain
+          title: Require a clean job and prepare the fixture
+      - ansible-lint/install
+      - check-install-script:
+          scenario: mark
+          title: Record the managed environment after the first install
+      # The public step for the second time: the environment is consistent.
+      - ansible-lint/install
+      - check-install-script:
+          scenario: reinstalled
+          title: Require that the second public install reinstalled nothing
+      - check-install-script:
+          scenario: consistent
+          title: Run the install script on the consistent environment and read its output
+      - check-install-script:
+          scenario: changed-distribution
+          title: Require that install rejects a changed distribution and repairs nothing
+      - check-install-script:
+          scenario: missing-cli
+          title: Require that install rejects a missing required CLI and repairs nothing
+      # The public step for the third time, after the test restored the files.
+      - ansible-lint/install
+      - check-python-install:
+          phase: after-install
+          title: Check the managed environment and command resolution in a separate step
+      - ansible-lint/execute
+      - check-python-install:
+          phase: after-execute
+          title: Require the expected calls and lint result of the real execute
+      - store_artifacts:
+          path: /tmp/ansible-lint-python-install-evidence
+          destination: python-install-evidence
+      - store_artifacts:
+          path: /tmp/ansible-lint-install-script-evidence
+          destination: install-script-evidence
+  python-pip-settings-test:
+    # Contract section 11 (F12): conflicting pip settings of the consumer.
+    # The values are test values. No real host or credential is named.
+    executor: ansible-lint/python
+    working_directory: /tmp/ansible-lint-case
+    environment:
+      PIP_INDEX_URL: https://orb-test-user:orb-test-credential-do-not-print@pip-environment.invalid/simple
+      PIP_NO_INDEX: "1"
+      PIP_TARGET: /tmp/ansible-lint-pip-target-environment
+      PIP_CONFIG_FILE: /tmp/ansible-lint-pip-named/pip.conf
+    steps:
+      - checkout:
+          path: /tmp/ansible-lint-orb-source
+      - check-install-script:
+          scenario: pip-settings-setup
+          title: Write conflicting pip configuration files
+      - check-python-install:
+          phase: before
+          case: plain
+          title: Require a clean job and prepare the fixture
+      - ansible-lint/install
+      - check-install-script:
+          scenario: pip-settings
+          title: Require that install names the ignored pip settings and prints no value
+      - check-python-install:
+          phase: after-install
+          title: Check the managed environment and command resolution in a separate step
+      - ansible-lint/execute
+      - check-python-install:
+          phase: after-execute
+          title: Require the expected calls and lint result of the real execute
+      - store_artifacts:
+          path: /tmp/ansible-lint-python-install-evidence
+          destination: python-install-evidence
+      - store_artifacts:
+          path: /tmp/ansible-lint-install-script-evidence
+          destination: install-script-evidence
+  # --- New path: conditions in which install must fail --------------------
+  python-failure-test:
+    # Contract F3 (E6), F4, F5, F6, F9, F14 and F15 on the default image.
+    executor: ansible-lint/python
+    working_directory: /tmp/ansible-lint-case
+    steps:
+      - checkout:
+          path: /tmp/ansible-lint-orb-source
+      - check-install-script:
+          scenario: clean-start
+          title: Require a clean job and record its start
+      - check-install-script:
+          scenario: existing-command
+          title: Require that install rejects a command that already exists on PATH
+      - check-install-script:
+          scenario: not-writable
+          title: Require that install fails when the managed location is not writable
+      - check-install-script:
+          scenario: location
+          title: Require that install rejects a working directory that would hold the environment
+      - check-install-script:
+          scenario: no-bash-env
+          title: Require that install fails when later steps could not receive PATH
+      - check-install-script:
+          scenario: no-venv
+          title: Require that install fails when the interpreter cannot create a virtual environment
+      - check-install-script:
+          scenario: index-unreachable
+          title: Require that install fails when the package index is unreachable
+      - check-install-script:
+          scenario: foreign
+          title: Require that install rejects the directory left by the failed installation
+      - check-install-script:
+          scenario: nothing-published
+          title: Require that no run of this job published a command
+      - store_artifacts:
+          path: /tmp/ansible-lint-install-script-evidence
+          destination: install-script-evidence
+  python-explicit-image-test:
+    # An explicit image for the python executor that differs from the default,
+    # and contract E5 (F2): it has no verified interpreter, so install must
+    # fail. The image is not a verified image and is not added to the record.
+    # It is named by a tag, because only a failure is expected from it; the
+    # check requires the properties it needs. cimg-python built this tag in
+    # the release that built the verified 3.14.10 image (commit c208a67).
+    executor:
+      name: ansible-lint/python
+      image: cimg/python:3.13.18
+    steps:
+      - checkout:
+          path: /tmp/ansible-lint-orb-source
+      - check-install-script:
+          scenario: unverified-image
+          python: python3
+          title: Require that install rejects an image without the verified interpreter
+      - store_artifacts:
+          path: /tmp/ansible-lint-install-script-evidence
+          destination: install-script-evidence
+  default-install-test:
+    # Contract E7 (F3): install on the existing default executor must fail and
+    # leave the existing tools alone. The existing path never needs install.
+    executor: ansible-lint/default
+    steps:
+      - checkout:
+          path: /tmp/ansible-lint-orb-source
+      - check-install-script:
+          scenario: default-executor
+          python: python3
+          title: Require that install is rejected on the existing default executor
+      - store_artifacts:
+          path: /tmp/ansible-lint-install-script-evidence
+          destination: install-script-evidence
 
 workflows:
   test-deploy:
@@ -218,6 +543,30 @@ workflows:
       - python-executor-test:
           filters: *filters
       - python-install-test:
+          filters: *filters
+      - python-role-test:
+          filters: *filters
+      - python-playbook-test:
+          filters: *filters
+      - python-molecule-test:
+          filters: *filters
+      - python-negative-test:
+          filters: *filters
+      - python-resource-class-test:
+          filters: *filters
+      - python-direct-docker-test:
+          filters: *filters
+      - python-install-first-test:
+          filters: *filters
+      - python-reinstall-test:
+          filters: *filters
+      - python-pip-settings-test:
+          filters: *filters
+      - python-failure-test:
+          filters: *filters
+      - python-explicit-image-test:
+          filters: *filters
+      - default-install-test:
           filters: *filters
       - orb-tools/pack:
           # This workflow has its own workspace. Inspect its actual publish archive.
@@ -254,6 +603,18 @@ workflows:
             - custom-image-test
             - python-executor-test
             - python-install-test
+            - python-role-test
+            - python-playbook-test
+            - python-molecule-test
+            - python-negative-test
+            - python-resource-class-test
+            - python-direct-docker-test
+            - python-install-first-test
+            - python-reinstall-test
+            - python-pip-settings-test
+            - python-failure-test
+            - python-explicit-image-test
+            - default-install-test
           # Only production publish uses the publishing context.
           context: CIRCLECI_ORBS
           filters:

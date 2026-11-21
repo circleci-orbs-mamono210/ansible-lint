@@ -1,0 +1,56 @@
+{
+  "path": "New path: python executor, install, execute. The existing path uses tests/negative-expected.json.",
+  "exit_code": 2,
+  "violations": [
+    {
+      "rule": "name[missing]",
+      "file": "playbook.yml",
+      "line": 6,
+      "count": 1
+    }
+  ],
+  "stdout_lines": [
+    "name[missing]: All tasks should be named.",
+    "playbook.yml:6 Task/Handler: debug msg=This task deliberately has no name"
+  ],
+  "stderr_lines": [
+    "WARNING  Listing 1 violation(s) that are fatal",
+    "Read documentation for instructions on how to ignore specific rule violations.",
+    "# Rule Violation Summary",
+    "1 name profile:basic tags:idiom",
+    "Failed: 1 failure(s), 0 warning(s) in 1 files processed of 1 encountered. Last profile that met the validation criteria was 'min'."
+  ],
+  "same_as_existing_path": {
+    "rule": "exit_code, violations, stdout_lines and stderr_lines equal tests/negative-expected.json. The optional notices are the ones accepted there; a line that names a file of the Python installation names it under the prefix of the verified interpreter. Check T18 of .circleci/check-python-install.py fails when this does not hold, so the two paths cannot drift apart.",
+    "settings": "The job sets ANSIBLE_ROLES_PATH after install, as the tests of the existing path do. ansible-lint 26.10.1 then does not use an isolated cache in the project directory (ansiblelint/app.py, has_custom_ansible_env), so the lines about /.ansible that the case normal prints do not appear here."
+  },
+  "release_notice_command": "pip install --upgrade ansible-lint",
+  "release_notice_basis": "ansible-lint 26.10.1 names this command when it runs in a virtual environment (ansiblelint/config.py, guess_install_method). The existing path, which has no virtual environment, prints 'pip3 install --user --upgrade ansible-lint'. Observed on this path in https://circleci.com/gh/circleci-orbs-mamono210/ansible-lint/636. At most one such notice for a newer version is accepted. install runs no such command.",
+  "optional_stderr_notices": [
+    {
+      "id": "python314-http304-cleanup",
+      "lines": [
+        "/home/circleci/.pyenv/versions/3.14.10/lib/python3.14/tempfile.py:538: ResourceWarning: Implicitly cleaning up <HTTPError 304: 'Not Modified'>",
+        "_warnings.warn(self.warn_message, ResourceWarning)"
+      ],
+      "classification": "Known runtime cleanup warning for an unchanged schema response, not a lint violation or failed role download.",
+      "basis": "The notice of the existing path, with the file under the prefix of the verified interpreter. The existing path printed it for this fixture on main 4514fd55662f2b7e45192db06d46b50231b6baee (negative-test of pipeline ce77cbc8-9378-4f51-8556-868aa4f5fcc9). Not yet observed on this path when this file was written.",
+      "scope": "Exact two-line message at most once, Python 3.14.10 / ansible-lint 26.10.1. Other status codes, warnings, partial or repeated messages and additional errors are rejected."
+    },
+    {
+      "id": "python314-invalid-decimal-literal-observed",
+      "lines": [
+        "<unknown>:1: SyntaxWarning: invalid decimal literal"
+      ],
+      "classification": "Exact runtime warning observed in the unchanged negative fixture on CI #492, separately recorded from lint findings. Its internal emitting call site is unconfirmed.",
+      "basis": "The notice of the existing path, unchanged. Not yet observed on this path when this file was written.",
+      "scope": "Only this complete line at most once, with the pinned image, exit 2 and the complete expected one-finding output. Other locations, messages, warning types, duplicates and additional errors are rejected. This does not classify SyntaxWarning generally as harmless."
+    }
+  ],
+  "measurement": {
+    "image_reference": "cimg/python@sha256:1e39aeaaf097598f60e55e42ee57289448a97dea346a9c8f53e3af70b50ac7db",
+    "platform": "linux/amd64",
+    "ansible_lint": "26.10.1",
+    "method": "CircleCI job python-negative-test of the candidate commit"
+  }
+}

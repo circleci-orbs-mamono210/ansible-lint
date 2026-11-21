@@ -2,13 +2,15 @@
 # Read the actual orb-tools 12.5.0 workspace archive; never repack or modify it.
 # #5537: the packed install command has no parameters, is this commit's
 # src/scripts/install.sh, and holds the fixed information of the record.
+# #5539: the packed python executor pins the verified image of the record, and
+# the direct Docker job of the tests names the same reference.
 set -euo pipefail
 
 archive=${1:?archive path required}
 purpose=${2:?injection or publication required}
 case "$purpose" in injection|publication) ;; *) exit 1 ;; esac
 test "$(git rev-parse HEAD)" = "$CIRCLE_SHA1"
-git diff --exit-code HEAD -- src python-install-lock.json
+git diff --exit-code HEAD -- src python-install-lock.json python-image-lock.json .circleci/test-deploy.yml
 temporary=$(mktemp -d)
 trap 'rm -rf "$temporary"' EXIT
 
@@ -47,16 +49,30 @@ test "$(jq -S '.' "$temporary/fixed.json")" = "$(jq -S '.fixed_information' pyth
 fixed_set_sha256=$(jq -cjS '.' "$temporary/fixed.json" | sha256sum | cut -d ' ' -f 1)
 test "$fixed_set_sha256" = "$(jq -r '.fixed_set_sha256' python-install-lock.json)"
 
+# The verified image: the default of the packed python executor, the record,
+# the interpreter of the fixed information, and the direct Docker job.
+image_reference=$(jq -r '.selected_image.reference' python-image-lock.json)
+test "$(jq -r '.executors.python.parameters.image.default' "$temporary/orb.json")" = "$image_reference"
+test "$(jq -r '.interpreter.path' "$temporary/fixed.json")" = "$(jq -r '.expected_interpreter.path' python-image-lock.json)"
+test "$(jq -r '.interpreter.version' "$temporary/fixed.json")" = "$(jq -r '.expected_interpreter.version' python-image-lock.json)"
+yq -o=json '.' .circleci/test-deploy.yml > "$temporary/test-deploy.json"
+jq -e --arg reference "$image_reference" \
+  '.jobs["python-direct-docker-test"].docker == [{"image": $reference}]' \
+  "$temporary/test-deploy.json" > /dev/null
+
 mkdir -p /tmp/ansible-lint-pack-evidence
 jq -n --arg purpose "$purpose" --arg commit "$CIRCLE_SHA1" \
   --arg job_url "${CIRCLE_BUILD_URL:-}" --arg source_tree "$(git rev-parse HEAD:src)" \
   --arg archive_sha256 "$(sha256sum "$archive" | cut -d ' ' -f 1)" \
   --arg install_command_sha256 "$packed_sha256" --arg fixed_set_sha256 "$fixed_set_sha256" \
+  --arg image_reference "$image_reference" \
   '{result:"passed",purpose:$purpose,commit:$commit,job_url:$job_url,
     input_source:"src",source_tree:$source_tree,archive_sha256:$archive_sha256,
     command:"install",public_parameters:[],run_steps:1,
     allowed_run_attributes:["command","name"],
     script:"src/scripts/install.sh",install_command_sha256:$install_command_sha256,
     install_command_note:"SHA-256 of the packed command after \\<< is read as <<. It equals the script of this commit.",
-    fixed_set_sha256:$fixed_set_sha256,fixed_information_record:"python-install-lock.json"}' \
+    fixed_set_sha256:$fixed_set_sha256,fixed_information_record:"python-install-lock.json",
+    python_executor_default_image:$image_reference,python_image_record:"python-image-lock.json",
+    direct_docker_job:"python-direct-docker-test in .circleci/test-deploy.yml names the same reference"}' \
   | tee "/tmp/ansible-lint-pack-evidence/install-${purpose}.json"

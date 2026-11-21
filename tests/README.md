@@ -356,6 +356,265 @@ context, or token is added.
 The final release candidate repeats the comparison (#5541). Results from
 another commit are not reused.
 
+## Required checks of the new path (#5539)
+
+The new path is the `python` executor, then `ansible-lint/install`, then
+`ansible-lint/execute`. #5536 and #5537 each left one minimal job on `main`.
+#5539 keeps both jobs with their conditions and adds twelve jobs.
+
+- All fourteen jobs use this commit's packed Orb through inline injection.
+- None needs a publishing context or token, and no dev publish is added.
+- Production publish requires all fourteen, next to the six jobs of the
+  existing path and the pack checks. The filters are the existing ones.
+- The six jobs of the existing path, their fixtures, expected values, and
+  accepted notices are unchanged. None of them calls `install`.
+- Nothing under `src/` is changed, and no test-only public parameter exists.
+
+### Jobs
+
+Every job checks the repository out to `/tmp/ansible-lint-orb-source` and
+copies only its fixture into the empty working directory
+`/tmp/ansible-lint-case`, as the jobs of the existing path do.
+
+| Job | Environment | Input and parameters | What the job shows |
+| --- | --- | --- | --- |
+| `python-executor-test` | `python`, defaults | None | Minimal job of #5536: the default image pulls and starts and has the prerequisites of `install` (P0 to P11) |
+| `python-install-test` | `python`, defaults | `tests/fixtures/normal` plus a `.python-version` probe; both flags false; no requirements file | Minimal job of #5537 (T0 to T14), now also T15 and T16. No dependency is installed |
+| `python-role-test` | `python`, defaults | `test_resources/`; `molecule-role-test: true` | This repository at `CIRCLE_SHA1` and then the Molecule requirements are installed; lint passes |
+| `python-playbook-test` | `python`, defaults | `tests/fixtures/playbook/`; `molecule-playbook-test: true` | Both requirements files are installed, in order; lint passes |
+| `python-molecule-test` | `python`, defaults | `test_resources/`; both flags false | Only the Molecule requirements are installed; lint passes |
+| `python-negative-test` | `python`, defaults | `tests/fixtures/negative`; both flags false | The real lint ends with 2 and reports exactly the expected violation |
+| `python-resource-class-test` | `python`, `resource_class: medium` | Playbook fixture and flag | The container has the memory limit of `medium`; the path works there |
+| `python-direct-docker-test` | A `docker` job that names the verified digest itself, `small` | As `python-install-test` | The path works without the `python` executor (contract 7.3, E3) |
+| `python-install-first-test` | `python`, defaults | `tests/fixtures/normal`; `install` runs before the checkout | Contract E2: the order install, checkout, execute works |
+| `python-reinstall-test` | `python`, defaults | `tests/fixtures/normal`; `install` three times | Second install reuses the environment (F8); a changed distribution and a missing CLI are rejected and not repaired (F7, F11) |
+| `python-pip-settings-test` | `python`, defaults; conflicting `PIP_*` variables and pip configuration files | `tests/fixtures/normal` | The settings have no effect; `install` prints their names and no value (F12) |
+| `python-failure-test` | `python`, defaults | None | `install` fails as required in seven conditions (table below) |
+| `python-explicit-image-test` | `python` with `image: cimg/python:3.13.18` | None | The `image` parameter reaches the job; without the verified interpreter `install` fails (E5, F2) |
+| `default-install-test` | Existing `default` executor | None | `install` is rejected there, and the existing tools stay as they were (E7) |
+
+`tests/fixtures/normal` without the probe file is the case `plain` of the
+checker. It is the input of `normal-test` on the existing path.
+
+### Checks T0 to T18
+
+`.circleci/check-python-install.py` runs in separate run steps around the
+public steps: `before`, `after-install`, and `after-execute`. It runs with the
+verified interpreter by its absolute path and `-I`. The case names the
+fixture and what `execute` must call (`CASES` in that file).
+
+| Check | Step | Requirement |
+| --- | --- | --- |
+| T0 | before | The checkout is this pipeline's revision |
+| T1 | before | The fixed information in `src/scripts/install.sh` equals `python-install-lock.json` and names the verified interpreter |
+| T2 | before | Clean job: no managed environment, no `ansible*` command on PATH, no publishing token, empty working directory |
+| T15 | before | The container has the memory limit of the configured resource class |
+| T3 | after-install | The state record is complete and names this Orb, the fixed set, and the interpreter |
+| T4 | after-install | The managed environment is outside the working directory and the checkout |
+| T5 | after-install | The installed distributions equal the fixed set plus the recorded bootstrap distributions |
+| T6 | after-install | Every exposed command resolves to the command directory of the managed environment, which holds nothing else |
+| T7 | after-install | The four direct commands run from the managed environment and report the recorded versions |
+| T8 | after-install or after-execute | A traced lint starts only recorded run-time CLIs, and each resolves inside the managed environment |
+| T9 | after-install | `python`, `python3`, `pip`, and `pip3` resolve as before `install` |
+| T10 | after-install | `install` changed only PATH for later steps: one export line in `BASH_ENV` |
+| T11 | after-install | The working directory, its `.python-version`, and the pyenv version file are unchanged |
+| T16 | after-install | In the home directory `install` added only the managed environment and changed nothing else |
+| T12 | after-execute | The real `execute` made exactly the expected calls in order, each through the managed environment |
+| T13 | after-execute | The final lint processed the real files with no violation, or failed with exactly the expected violation (case `negative`) |
+| T14 | after-execute | The fixture, the state record, and the installed distributions are unchanged |
+| T17 | after-execute | Exactly the expected roles are installed at the pinned revisions, from the expected repositories and commits |
+| T18 | after-execute | Case `negative` only: the expected result equals the one of the existing path |
+
+Notes:
+
+- T8 runs after `install` where the lint must pass without dependencies
+  (`normal`, `plain`). In the other cases it runs after `execute`, because the
+  roles must exist first, and in the case `negative` it must end with 2.
+- T15 compares the memory limit that the container shows
+  (`/sys/fs/cgroup`). The CPU quota is recorded and not compared, because
+  CircleCI can grant more than the cores of the class.
+- T16 compares every entry below the home directory before and after
+  `install`: kind, and size and modification time of files. In
+  `python-install-first-test` nothing of this repository exists before
+  `install`, and the checkout that follows adds `~/.ssh`. Two inline steps
+  therefore list the home directory with `find`, directly before and directly
+  after `install`, and T16 compares these two lists.
+- T17 reads `meta/.galaxy_install_info` and the Git archive record of
+  `record-evidence.py`, as `integration-test.py` does on the existing path.
+  In the cases `plain` and `negative` it requires that no role was installed
+  and no archive was fetched. The case `normal` has no T17; there T12 already
+  requires that `execute` made no dependency call.
+- From the case `plain` on, the checker sets `ANSIBLE_ROLES_PATH` after
+  `install`, as the jobs of the existing path do. The case `normal` stays as
+  #5537 measured it and sets no such variable.
+
+### From the minimal jobs to the required checks
+
+This table maps every condition of #5536 C4 and #5537 C7 to what carries it
+now. Neither minimal job was removed or merged, and no condition was changed.
+
+| Condition | Carried by | Input | Expected result |
+| --- | --- | --- | --- |
+| #5536 C4, P0: checkout is the candidate commit | `python-executor-test` (unchanged); T0 in the ten jobs with T checks; `revision` in the three other jobs | — | `HEAD` equals `CIRCLE_SHA1` |
+| P1: the executor pins the recorded digest | `python-executor-test`; both pack jobs (`verify-packed-install.sh`) | `python-image-lock.json` | Source and packed default image equal the record; the direct Docker job names the same reference |
+| P2: platform | `python-executor-test` | — | linux/amd64 |
+| P3, P4: Bash and Git | `python-executor-test`; every new-path job uses both | — | Both are on PATH and run |
+| P5, P6: interpreter path and version | `python-executor-test`; T1, T3, T5 in ten jobs | — | Python 3.14.10 at the recorded path |
+| P7, P8: pip and virtual environment | `python-executor-test`; every successful `install` | — | A virtual environment with pip is created |
+| P9: no `ansible*` command on PATH | `python-executor-test`; T2; `clean-start` | — | None |
+| P10: home writable without sudo | `python-executor-test`; T4 and T16 | — | `install` writes only `~/.orbss-ansible-lint` |
+| P11: `.python-version` does not change the interpreter | `python-executor-test`; `python-install-test` and `python-direct-docker-test` (probe file; T5, T9, T11) | Probe file | The verified interpreter is used |
+| #5536 C4: publish requires the job; filters; no context or token | `.circleci/test-deploy.yml`: `requires` of `orb-tools/publish`, `filters: *filters` | — | Unchanged for this job; the twelve new jobs are connected the same way |
+| #5537 C7, T0 to T14 | `python-install-test`, same case and conditions | `tests/fixtures/normal` plus probe | All pass; 1 file processed of 2 encountered |
+| T0 to T14 with other inputs | `python-role-test`, `python-playbook-test`, `python-molecule-test`, `python-negative-test`, `python-resource-class-test`, `python-direct-docker-test`, `python-install-first-test`, `python-reinstall-test`, `python-pip-settings-test` | Table "Jobs" | All pass with the expectations of the case |
+| #5537 C7: clean job | T2 in ten jobs; `clean-start`; `image` checks | — | No environment, no `ansible*` command, no token |
+| #5537 C7: separate run steps, real `execute` | Same step layout in every job that runs `execute` | — | T6, T7, T12 |
+| #5537 C7: real Ansible file, no violation | T13 in nine jobs; exact violation in `python-negative-test` | Table "Jobs" | T13 |
+| #5537 C7: publish requires the job; filters; no context or token | As for #5536 C4 | — | As above |
+
+Differences from the minimal job of #5537 that add conditions: T15 and T16
+also run in `python-install-test`. Nothing was taken away.
+
+### Failure cases and what the test replaces
+
+CircleCI ends a job at the first failed step. A failing `ansible-lint/install`
+therefore cannot be followed by a step that inspects the result. For the
+conditions in which `install` must fail, and where its output has to be read,
+`.circleci/check-install-script.py` starts the production script itself:
+
+```text
+/bin/bash -eo pipefail /tmp/ansible-lint-orb-source/src/scripts/install.sh
+```
+
+- This is the script of the candidate commit, unchanged, in the shell that
+  CircleCI uses for a run step. Both pack jobs show that the packed command
+  equals this file (`verify-packed-install.sh`).
+- It is **not** the public step. A passing scenario is no evidence that
+  CircleCI ran a failing step. Wherever `install` is expected to succeed, the
+  jobs use the public step.
+- Each scenario changes only what the table names. pip, its command line, and
+  the index URL are those of production in every scenario.
+
+Every failing scenario requires: exit 1; one failure line with the expected
+category; the line that no command was published; `BASH_ENV` unchanged; the
+exposed commands resolve as before; no success message.
+
+| Scenario (job) | Contract | Set up by the test | Expected category |
+| --- | --- | --- | --- |
+| `existing-command` (failure) | E6, F3 | A directory with an executable named `ansible-lint` first on PATH of the script's process | `existing-command`; the tool is neither started nor changed |
+| `not-writable` (failure) | F5 | Mode 0555 on the home directory during the run | `permission` |
+| `location` (failure) | F14 | The home directory as current directory | `location` |
+| `no-bash-env` (failure) | F15 | `BASH_ENV` removed from the script's process | `publish` |
+| `no-venv` (failure) | F4 | The `ensurepip` module of the verified interpreter hidden during the run | `virtual-environment` |
+| `index-unreachable` (failure) | F9 | Standard proxy variables point to `127.0.0.1:9`; no pip setting | `download-or-install`; a directory without state record is left |
+| `foreign` (failure) | F6 (S3) | Nothing: the directory left by the scenario before | `foreign-environment`; nothing changed or deleted |
+| `changed-distribution` (reinstall) | F7, F11 (S2) | The version in the metadata of one installed distribution | `inconsistent-environment`; nothing repaired |
+| `missing-cli` (reinstall) | F7 (S2) | `ansible-config` moved out of the command directory | `inconsistent-environment`; nothing repaired |
+| `unverified-image` (explicit image) | E5, F2 | Nothing: the image has no interpreter at the verified path | `interpreter` |
+| `default-executor` (default) | E7 | Nothing: the existing default image | `interpreter` or `existing-command`; the four tools print the same versions afterwards |
+
+Scenarios that expect success: `reinstalled` compares the environment after
+the second **public** `install` with the first (F8). `consistent` runs the
+script once more to read its output. `pip-settings` reads the output for the
+names of the ignored settings and requires that no test value appears (F12).
+
+The script checks the interpreter before it looks for existing commands. On
+the existing default image the interpreter path is missing, so the expected
+category of `default-executor` is `interpreter`. The evidence records the
+category (`rejected_by`). F3 itself is measured by `existing-command`.
+
+`no-venv` moves the module directory aside and puts it back. A directory of
+an image layer cannot be renamed on the overlay file system of a container,
+so it is copied with its modification times and the original is removed; the
+evidence names the method. If the module cannot be hidden, the scenario
+fails. F4 is never reported as measured without a run.
+
+### Measured and structural
+
+| Kind | Items |
+| --- | --- |
+| Measured through the public step | F8 (second install), F12, F13, E2, E3, non-default resource class |
+| Measured through the production script | E5/F2 (missing path), E6/F3, E7, F4, F5, F6, F7, F9, F11, and in addition F14, F15 |
+| Structural only | F1 (platform); F2 for an interpreter of another version at the same path; F10 (dependency resolution, withdrawn release, other network failures). F9 is the one representative measurement of an unreachable index |
+
+### Executor settings and images
+
+- Default and `medium`: T15 in the default jobs and in
+  `python-resource-class-test`. CircleCI's record of each job names the class
+  as well.
+- Explicit image: `python-explicit-image-test` passes
+  `image: cimg/python:3.13.18`. The check requires that the verified
+  interpreter path is absent, which the default image cannot satisfy. Match
+  the reference to the job's "Spin up environment" log.
+- That image is **not** a verified image. It is named by a tag, shows only
+  that the parameter is applied and that `install` refuses the image, and is
+  not added to `python-image-lock.json`. The verified list still holds one
+  image.
+- Direct Docker job: both pack jobs require that
+  `python-direct-docker-test` names exactly the reference of
+  `python-image-lock.json`.
+
+### Comparison with the existing path
+
+Both paths use the same fixtures, flags, and pinned role revision
+(`747af654d2a2e05c1cfabce9c0b79b2a1eae3650`).
+
+| Existing path | New path | Compared |
+| --- | --- | --- |
+| `normal-test` | `python-install-first-test`, `python-reinstall-test`, `python-pip-settings-test` (case `plain`) | Exit code, lint summary, no dependency call |
+| `role-test` | `python-role-test` | Calls and their order, installed revisions, lint summary |
+| `playbook-test` | `python-playbook-test` | As above |
+| `negative-test` | `python-negative-test` | Exit code, violation, every output line (T18 enforces equal expectations) |
+| `resource-class-test` | `python-resource-class-test` | As `playbook-test` |
+| `custom-image-test` | None | The new path has one verified image |
+| None | `python-molecule-test` | The existing path has no job with both flags false and Molecule requirements |
+
+Known differences, which are not lint results:
+
+- Location of Python: `/usr/local` in the GHCR image,
+  `/home/circleci/.pyenv/versions/3.14.10` on the new path. A notice that
+  names a file of the Python installation differs in this prefix only.
+- Release notice of ansible-lint: `pip install --upgrade ansible-lint` in a
+  virtual environment, `pip3 install --user --upgrade ansible-lint` on the
+  existing path (`tests/python-negative-expected.json`).
+- `python-install-test` has the probe file, so lint reports 1 file processed
+  of 2 encountered, and it sets no `ANSIBLE_ROLES_PATH`. Without that variable
+  and without a project marker, ansible-lint 26.10.1 uses `/` as project
+  directory and prints warnings about `/.ansible` for a user that cannot
+  write there. With the variable it uses the cache in the home directory, as
+  in the other jobs and on the existing path.
+
+The installed versions and the lint summaries of both paths are taken from
+the evidence of one pipeline and recorded in #5539. No job compares two jobs.
+
+### Planned usage and these jobs
+
+The planned usage of `110_ロードマップ` version 1 and contract 6.4 is
+`executor: ansible-lint/python` with the steps `checkout`,
+`ansible-lint/install`, `ansible-lint/execute`.
+
+- `python-install-test` runs these steps in this order, without parameters.
+- `python-role-test` and `python-playbook-test` pass the flags to `execute`.
+- `python-direct-docker-test` is the same job with the image written in the
+  job.
+
+Two differences from a consumer job: the checkout goes to another directory
+and a fixture is copied in, because the root of this repository is not a lint
+input; and check steps stand between the public steps. The check steps add
+observers for `execute` only after `install`.
+
+### Evidence
+
+| Artifact | Jobs | Content |
+| --- | --- | --- |
+| `python-executor-evidence` | `python-executor-test` | P0 to P11 |
+| `python-install-evidence` | Ten jobs with T checks | `python-install.json`: case, commit, job URL, every check with its observation; the three phase files |
+| `install-script-evidence` | Reinstall, pip settings, failure, explicit image, default | One file for each scenario: what the test set up, exit code, output, failure line, checks |
+| `packed-orb-structure` | Both pack jobs | `install-<purpose>.json`: packed command, fixed set, default image of `python`, and the reference of the direct Docker job |
+
+The final release candidate repeats all of these jobs (#5541). Results of
+another commit are not reused.
+
 ## Images and comparison scope
 
 The default image/version record remains `image-lock.json`. Its recorded
