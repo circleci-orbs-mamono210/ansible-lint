@@ -471,8 +471,8 @@ is therefore set up after `install`.
 | E3 | Direct Docker job with the same verified digest; checkout, `install`, `execute` | Supported | Same as E1 | #5539 measures |
 | E4 | `python` executor whose `image` is another image in the verified record | Supported only after section 7.5 | Same as E1 | Section 7.5 for that image |
 | E5 | Image without the verified interpreter: the path is missing or the version differs | Rejected | `install` exits non-zero before creating the environment. Nothing is published. | #5537 structural check; #5539 measures |
-| E6 | Image that already provides a command of the exposed set on PATH | Rejected | `install` exits non-zero. Existing tools and PATH stay unchanged. Success is never reported through the existing tools. | #5537 structural check; #5539 measures with E7 |
-| E7 | Existing `default` executor (GHCR digest) with `install` | Rejected, through E6 and possibly E5 | As E6 | #5539 measures. If `install` does not fail there, that is a contract mismatch handled under section 20.3. |
+| E6 | Image that already provides a command of the exposed set on PATH | Rejected | `install` exits non-zero. Existing tools and PATH stay unchanged. Success is never reported through the existing tools. | #5537 structural check; #5539 measures on the verified image, with an executable of the same name as an exposed command first on PATH, so that only E6 applies |
+| E7 | Existing `default` executor (GHCR digest) with `install` | Rejected. Both E5 and E6 apply: the image does not have the verified interpreter and already provides commands of the exposed set on PATH. This contract does not fix which of the two failure categories `install` reports. | As E6 | #5539 measures. If `install` does not fail there, that is a contract mismatch handled under section 20.3. |
 | E8 | Unverified image that has the verified interpreter at the same path and version and none of the exposed commands | Unsupported, not rejected | `install` may succeed. Nothing is guaranteed. It is never documented as supported. | #5540 documents it |
 | E9 | Platform other than Linux on amd64 | Rejected | `install` exits non-zero before creating the environment. | #5537 structural check |
 | E10 | Verified interpreter present but unable to create a virtual environment | Rejected | `install` exits non-zero. Nothing is published. | #5537 structural check; measured if reproducible |
@@ -712,7 +712,7 @@ work, the test is redesigned. A required measurement is never skipped.
 | --- | --- | --- | --- | --- |
 | F1 | Platform is not Linux on amd64 | Non-zero exit before creating the environment | Structural | #5537 |
 | F2 | Verified interpreter missing or of another version | Non-zero exit. No fallback. | Structural; measured with an image chosen by #5539 that lacks the verified interpreter and provides none of the exposed commands (E5) | #5537, #5539 |
-| F3 | A command of the exposed set already exists on PATH outside the managed environment | Non-zero exit. Existing tools and PATH unchanged. No success through existing tools. | Measured on the existing `default` image (E7) | #5537, #5539 |
+| F3 | A command of the exposed set already exists on PATH outside the managed environment | Non-zero exit. Existing tools and PATH unchanged. No success through existing tools. | Measured on the verified image, with an executable of the same name as an exposed command first on PATH (E6) | #5537, #5539 |
 | F4 | The interpreter cannot create a virtual environment, or pip is missing | Non-zero exit | Structural; measured if reproducible | #5537, #5539 |
 | F5 | The managed location is not writable | Non-zero exit | Measured, by denying write access in a test job | #5539 |
 | F6 | The target path exists without a valid record (S3) | Non-zero exit. No change. | Measured | #5539 |
