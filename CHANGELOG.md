@@ -7,6 +7,66 @@ with the compatibility and image-update policy in [README.md](README.md).
 
 ## [Unreleased]
 
+### Added
+
+- A `python` executor: a `cimg/python` Docker executor pinned by digest
+  (`sha256:1e39aeaaf097598f60e55e42ee57289448a97dea346a9c8f53e3af70b50ac7db`,
+  `linux/amd64`, tag `3.14.10` at selection), with the `image` and
+  `resource_class` parameters. It contains no `ansible-lint`.
+- An `install` command without parameters. It installs a pinned tool set from
+  PyPI into `$HOME/.orbss-ansible-lint` with the verified Python 3.14.10:
+  ansible-lint 26.10.1, Ansible package 14.5.0, and ansible-core 2.21.5, with
+  30 distributions in total at exact versions. After checking the result, it
+  exposes the `ansible*` commands to later steps of the same job through
+  `BASH_ENV`. It supports verified images only and ignores the consumer's pip
+  settings.
+- The contract of the new path in
+  [docs/python-install-contract.md](docs/python-install-contract.md), with the
+  records [python-image-lock.json](python-image-lock.json) and
+  [python-install-lock.json](python-install-lock.json).
+- A source example of the python executor path.
+- CI checks of the new path, including the failure cases of `install`, and
+  checks that both actual pack outputs contain this commit's `install` command
+  and keep the `default` and `execute` definitions equal to the published 1.0.0
+  source.
+
+### Changed
+
+- README explains both paths, the new API, how `install` works, and the update
+  procedure of each path, including the release types of the new path.
+- The Orb description presents both paths. The source example of the default
+  executor references `orbss/ansible-lint@1.1.0`.
+
+### Verification scope
+
+The `default` executor, the `execute` command, and the default GHCR image digest
+are unchanged. CI found no difference from the published 1.0.0 source in either
+pack output. Existing configurations need no `install` step. The release adds
+the python executor path and keeps the existing contract, so it is a minor
+release.
+
+On commit [`5e542f7`](https://github.com/circleci-orbs-mamono210/ansible-lint/commit/5e542f78e0a08529ea8302582a3bb1661c248882),
+both paths produced the same lint results for the same fixtures, settings, and
+fixed role revision: the normal, role, playbook, resource-class, and negative
+cases. Their main versions are also equal: Python 3.14.10, Ansible package
+14.5.0, ansible-core 2.21.5, and ansible-lint 26.10.1. Equal versions do not
+guarantee equal results for other inputs. Output other than the lint results
+differed:
+
+- ansible-lint prints a notice when a newer release exists. It suggests
+  `pip install --upgrade ansible-lint` on the python executor path and
+  `pip3 install --user --upgrade ansible-lint` on the default executor path.
+  The Orb pins the versions, so the notice is not an instruction for Orb users.
+- An HTTP 304 cleanup `ResourceWarning` appeared in all six jobs of the default
+  executor path and in none of the lint runs of the python executor path. The
+  cause was not investigated.
+
+The python executor path downloads the tool set from PyPI in every job, so it
+needs network access and takes longer. Faster jobs are not promised. Exact
+versions do not verify the hashes of downloaded files or keep releases
+available, and the whole result is not guaranteed to be reproducible. The final
+release candidate is checked again before publication.
+
 ## [1.0.0] - 2026-11-10
 
 ### Added

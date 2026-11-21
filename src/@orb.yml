@@ -2,9 +2,12 @@
 version: 2.1
 
 description: >
-  Run Ansible lint against the working directory with a Docker executor whose
-  default image is pinned by digest. Supports optional Ansible role installation
-  and installation of Molecule requirements before linting.
+  Run Ansible lint against the working directory. Choose one of two paths:
+  the default executor, whose pinned image already provides the tools, or the
+  python executor with the install command, which installs a pinned tool set
+  into an Orb-managed environment on a verified cimg/python image. Both paths
+  support optional Ansible role installation and installation of Molecule
+  requirements before linting.
 
 display:
   home_url: "https://circleci.com/developer/orbs/orb/orbss/ansible-lint"

@@ -1,9 +1,9 @@
 ---
-description: Execute Ansible lint
+description: Lint an Ansible role repository with the default executor.
 usage:
   version: 2.1
   orbs:
-    ansible-lint: orbss/ansible-lint@1.0.0
+    ansible-lint: orbss/ansible-lint@1.1.0
   jobs:
     execute-ansible-lint:
       executor: ansible-lint/default

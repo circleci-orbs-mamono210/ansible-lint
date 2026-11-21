@@ -1,0 +1,20 @@
+---
+description: >
+  Install the pinned tool set with the python executor, then lint the
+  checked-out repository. Use this path instead of the default executor, not
+  together with it.
+usage:
+  version: 2.1
+  orbs:
+    ansible-lint: orbss/ansible-lint@1.1.0
+  jobs:
+    lint-with-install:
+      executor: ansible-lint/python
+      steps:
+        - checkout
+        - ansible-lint/install
+        - ansible-lint/execute
+  workflows:
+    lint:
+      jobs:
+        - lint-with-install
