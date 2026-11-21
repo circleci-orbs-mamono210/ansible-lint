@@ -7,6 +7,8 @@ with the compatibility and image-update policy in [README.md](README.md).
 
 ## [Unreleased]
 
+## [1.1.0] - 2026-11-22
+
 ### Added
 
 - A `python` executor: a `cimg/python` Docker executor pinned by digest
@@ -181,5 +183,6 @@ The exact release commit and publication date are unconfirmed.
 The historical entries use published source differences and the corresponding
 implementation history. No historical tag or compare link is assumed.
 
-[Unreleased]: https://github.com/circleci-orbs-mamono210/ansible-lint/compare/v1.0.0...HEAD
+[Unreleased]: https://github.com/circleci-orbs-mamono210/ansible-lint/compare/v1.1.0...HEAD
+[1.1.0]: https://github.com/circleci-orbs-mamono210/ansible-lint/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/circleci-orbs-mamono210/ansible-lint/tree/v1.0.0
