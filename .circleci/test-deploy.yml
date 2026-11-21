@@ -511,7 +511,7 @@ jobs:
           path: /tmp/ansible-lint-install-script-evidence
           destination: install-script-evidence
   default-install-test:
-    # Contract E7 (F3): install on the existing default executor must fail and
+    # Contract E7: install on the existing default executor must fail and
     # leave the existing tools alone. The existing path never needs install.
     executor: ansible-lint/default
     steps:

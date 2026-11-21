@@ -611,7 +611,7 @@ def unverified_image(run):
 
 
 def default_executor(run):
-    """E7 and F3: install on the existing default executor."""
+    """E7: install on the existing default executor."""
     source_revision(run)
     interpreter = run.fixed["interpreter"]["path"]
     direct = run.fixed["direct_commands"]
@@ -636,8 +636,9 @@ def default_executor(run):
               {"versions": {name: (after[name].stdout.splitlines() or [""])[0] for name in direct}})
     return run.finish("Nothing. The job uses the default executor of this commit's packed Orb.",
                       {"rejected_by": [line["category"] for line in run.result["failure_lines"]],
-                       "note": "Contract E7: rejected through E6 (existing command) and possibly E5 "
-                               "(interpreter). The category shows which check stopped install first."})
+                       "note": "Contract E7: on the existing default image, both E5 (interpreter) and E6 "
+                               "(existing command) apply. The contract does not fix which of the two "
+                               "categories install reports. The category shows which check stopped install first."})
 
 
 SCENARIOS = {
