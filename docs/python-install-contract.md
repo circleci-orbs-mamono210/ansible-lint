@@ -1067,3 +1067,75 @@ Other sources:
   and [CircleCI: Set an environment variable](https://circleci.com/docs/guides/security/set-environment-variable/).
   This document relies on the roadmap's summary of them and does not
   re-verify their content.
+
+## 23. Public contract for 2.0.0
+
+### 23.1 Calling `execute`
+
+Version 2.0.0 renames two public parameters to snake_case so that `execute`
+follows the naming convention checked by RC010. This changes how consumers
+call the command and requires a major release under section 14.1.
+
+| 1.1.0 parameter | 2.0.0 parameter | Type | Default | Dependency installed when true |
+| --- | --- | --- | --- | --- |
+| `molecule-role-test` | `molecule_role_test` | boolean | `false` | The consumer repository at `CIRCLE_SHA1`, installed as an Ansible role |
+| `molecule-playbook-test` | `molecule_playbook_test` | boolean | `false` | The roles listed in `roles/requirements.yml` |
+
+CircleCI must reject either old name during configuration processing, even
+if its value is `false` or its new name is also present. When upgrading to
+`orbss/ansible-lint@2.0.0`, rename every old key in use. A consumer that
+omits both keys only needs to update the Orb reference. A consumer that
+defers migration can keep using `orbss/ansible-lint@1.1.0`.
+
+The standard `default` path runs `checkout` then `execute`. The standard
+`python` path runs `checkout`, `install`, then `execute`. On either path,
+`execute` displays the tool versions and evaluates the two flags
+independently. If both are true, it installs the consumer repository first
+and the roles from `roles/requirements.yml` second. For every combination,
+including when both flags are false, it then processes each matching
+`molecule/*/requirements.yml`. Finally it runs `ansible-lint` without
+arguments and returns that invocation's actual exit code, including a
+nonzero result.
+
+### 23.2 Comparing the two packs for release
+
+The comparison uses the preceding published release under section 5.6.
+For the 1.1.0 baseline, the size and SHA-256 of the saved source must match
+the publication record in Redmine #5541, journal 11324, C5.
+See the [published source](../tests/baseline/orbss-ansible-lint-1.1.0.yml)
+and its [identity record](../tests/baseline/orbss-ansible-lint-1.1.0.json).
+
+For 2.0.0, compare the public names by kind within each actual pack. The
+injection pack and the publication pack must each match the baseline in all
+three rows. An addition, omission, or substitution fails that pack.
+
+| Public element kind | Names in the 1.1.0 baseline |
+| --- | --- |
+| Executors | `default`, `python` |
+| Commands | `execute`, `install` |
+| Jobs | Empty set (0 public jobs) |
+
+In each pack, compare the full definitions of all four elements using the
+hash check in section 5.3 and the YAML equality rules in sections 5.4 and
+5.6. With the 1.1.0 baseline, the differences must match exactly the six
+entries in the
+[expected differences](../tests/baseline/expected-differences-1.1.0-to-2.0.0.json).
+All six are in `commands.execute`. Two remove the old parameter keys, two
+add the new keys with the corresponding old definitions in full, and two
+update the parameter references passed to the same dependency step.
+
+Each entry gives a path relative to the named element and records key
+presence separately from its value. A key present with YAML `null` therefore
+differs from an absent key. For each new parameter, `copy_from_baseline`
+identifies the old definition inside that element, including its description,
+type, and default. Reference strings include their spaces.
+
+Record both adoption decisions in Redmine #5552 under sections 5.6 and 20.
+For the baseline, identify the published version, the paths of the source,
+identity record and difference list, the adoption date and the full commit
+SHA. For the contract, identify this file and section, the impact on
+consumers, the adoption date and the full contract commit SHA. One journal
+entry and one commit can cover both decisions. If a 1.x maintenance release
+is published first, use its publication record to establish the baseline
+and expected differences again and record their adoption before comparing
+the 2.0.0 candidate.

@@ -1,0 +1,55 @@
+{
+  "record_version": 1,
+  "ticket": 5552,
+  "purpose": "Published 1.1.0 baseline for comparison with orbss/ansible-lint@2.0.0 under sections 5.6 and 23 of docs/python-install-contract.md.",
+  "orb": "orbss/ansible-lint",
+  "version": "1.1.0",
+  "registry": {
+    "version_id": "7c25bbb0-35f7-452e-ba08-059fe1fff2c7",
+    "published_at": "2026-11-21T16:39:27.561Z"
+  },
+  "git": {
+    "tag": "v1.1.0",
+    "tag_type": "lightweight",
+    "commit": "9a9c23ea43c228268314561319ed07907d383dd5",
+    "repository_tree": "a61683fe9c29e24894772f69be5dbd07b6c50f87",
+    "orb_source_tree": "bf48f54001ebb2652e1940168e1f6312b2c70aba"
+  },
+  "expected": {
+    "size_bytes": 41151,
+    "sha256": "eb89eb4cca7bb26841e37fb870954274694fbe2968c80ca7188015998e51e0a8",
+    "value_sources": [
+      "Redmine project 319, #5541 journal 11324, C5 (registry source of 1.1.0)."
+    ]
+  },
+  "stored_copy": {
+    "path": "tests/baseline/orbss-ansible-lint-1.1.0.yml",
+    "size_bytes": 41151,
+    "sha256": "eb89eb4cca7bb26841e37fb870954274694fbe2968c80ca7188015998e51e0a8"
+  },
+  "retrieval": {
+    "saved_at": "2026-11-27T10:50:08+00:00",
+    "source": "https://circleci.com/graphql-unstable",
+    "method": "Requested orbVersion(orbVersionRef: \"orbss/ansible-lint@1.1.0\"). Encoded the decoded source string directly as UTF-8 and compared the saved bytes with the publication record."
+  },
+  "ci_reference": {
+    "expected_differences": "tests/baseline/expected-differences-1.1.0-to-2.0.0.json",
+    "comparison_targets": [
+      "executors.default",
+      "executors.python",
+      "commands.execute",
+      "commands.install"
+    ],
+    "public_names": {
+      "executors": [
+        "default",
+        "python"
+      ],
+      "commands": [
+        "execute",
+        "install"
+      ],
+      "jobs": []
+    }
+  }
+}

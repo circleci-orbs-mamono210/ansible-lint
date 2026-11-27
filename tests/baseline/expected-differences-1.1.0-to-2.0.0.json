@@ -1,0 +1,113 @@
+{
+  "record_version": 1,
+  "ticket": 5552,
+  "baseline": "orbss/ansible-lint@1.1.0",
+  "baseline_source": "tests/baseline/orbss-ansible-lint-1.1.0.yml",
+  "target": "orbss/ansible-lint@2.0.0",
+  "differences": [
+    {
+      "element": "commands.execute",
+      "path": "parameters.molecule-role-test",
+      "change": "missing",
+      "before": {
+        "present": true,
+        "value": {
+          "default": false,
+          "description": "Install the current repository at CIRCLE_SHA1 as an Ansible role before linting. Molecule requirements are installed independently of this flag.\n",
+          "type": "boolean"
+        }
+      },
+      "after": {
+        "present": false
+      },
+      "reason": "Rename the public role parameter from molecule-role-test to molecule_role_test.",
+      "release_type": "major"
+    },
+    {
+      "element": "commands.execute",
+      "path": "parameters.molecule_role_test",
+      "change": "added",
+      "before": {
+        "present": false
+      },
+      "after": {
+        "present": true,
+        "value": {
+          "default": false,
+          "description": "Install the current repository at CIRCLE_SHA1 as an Ansible role before linting. Molecule requirements are installed independently of this flag.\n",
+          "type": "boolean"
+        }
+      },
+      "copy_from_baseline": "parameters.molecule-role-test",
+      "reason": "Rename the public role parameter from molecule-role-test to molecule_role_test.",
+      "release_type": "major"
+    },
+    {
+      "element": "commands.execute",
+      "path": "parameters.molecule-playbook-test",
+      "change": "missing",
+      "before": {
+        "present": true,
+        "value": {
+          "default": false,
+          "description": "Install roles from roles/requirements.yml before linting. Molecule requirements are installed independently of this flag.\n",
+          "type": "boolean"
+        }
+      },
+      "after": {
+        "present": false
+      },
+      "reason": "Rename the public playbook parameter from molecule-playbook-test to molecule_playbook_test.",
+      "release_type": "major"
+    },
+    {
+      "element": "commands.execute",
+      "path": "parameters.molecule_playbook_test",
+      "change": "added",
+      "before": {
+        "present": false
+      },
+      "after": {
+        "present": true,
+        "value": {
+          "default": false,
+          "description": "Install roles from roles/requirements.yml before linting. Molecule requirements are installed independently of this flag.\n",
+          "type": "boolean"
+        }
+      },
+      "copy_from_baseline": "parameters.molecule-playbook-test",
+      "reason": "Rename the public playbook parameter from molecule-playbook-test to molecule_playbook_test.",
+      "release_type": "major"
+    },
+    {
+      "element": "commands.execute",
+      "path": "steps[2].run.environment.PARAM_MOLECULE_ROLE_TEST",
+      "change": "changed",
+      "before": {
+        "present": true,
+        "value": "<< parameters.molecule-role-test >>"
+      },
+      "after": {
+        "present": true,
+        "value": "<< parameters.molecule_role_test >>"
+      },
+      "reason": "Pass the renamed role parameter to the same dependency installation step through PARAM_MOLECULE_ROLE_TEST.",
+      "release_type": "major"
+    },
+    {
+      "element": "commands.execute",
+      "path": "steps[2].run.environment.PARAM_MOLECULE_PLAYBOOK_TEST",
+      "change": "changed",
+      "before": {
+        "present": true,
+        "value": "<< parameters.molecule-playbook-test >>"
+      },
+      "after": {
+        "present": true,
+        "value": "<< parameters.molecule_playbook_test >>"
+      },
+      "reason": "Pass the renamed playbook parameter to the same dependency installation step through PARAM_MOLECULE_PLAYBOOK_TEST.",
+      "release_type": "major"
+    }
+  ]
+}
