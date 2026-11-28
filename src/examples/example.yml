@@ -1,16 +1,18 @@
 ---
-description: Lint an Ansible role repository with the default executor.
+description: >
+  Lint an Ansible role repository with the default executor.
+  Use this example after orbss/ansible-lint@2.0.0 is published.
 usage:
   version: 2.1
   orbs:
-    ansible-lint: orbss/ansible-lint@1.1.0
+    ansible-lint: orbss/ansible-lint@2.0.0
   jobs:
     execute-ansible-lint:
       executor: ansible-lint/default
       steps:
         - checkout
         - ansible-lint/execute:
-            molecule-role-test: true
+            molecule_role_test: true
   workflows:
     use-my-orb:
       jobs:

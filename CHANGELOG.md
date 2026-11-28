@@ -7,6 +7,17 @@ with the compatibility and image-update policy in [README.md](README.md).
 
 ## [Unreleased]
 
+### Changed
+
+- **Breaking change in 2.0.0.** In `ansible-lint/execute`, `molecule-role-test`
+  becomes `molecule_role_test` and `molecule-playbook-test` becomes
+  `molecule_playbook_test`. CircleCI rejects either old name before the job
+  runs, even when set to `false`. After publication, update the Orb reference
+  to `orbss/ansible-lint@2.0.0` and rename each key you use, keeping its
+  value. If you omit both keys, only the version pin changes. To defer
+  migration, keep `orbss/ansible-lint@1.1.0`.
+  See the [1.1.0 to 2.0.0 migration guide](README.md#updating-from-110-to-200).
+
 ## [1.1.0] - 2026-11-22
 
 ### Added

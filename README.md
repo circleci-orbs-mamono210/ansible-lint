@@ -15,9 +15,10 @@ offers two ways to provide the tools:
 Both support optional role installation for repositories that use Molecule
 requirements.
 
-The examples below target `orbss/ansible-lint@1.1.0`. Confirm that version is
-available in the [Orb registry](https://circleci.com/developer/orbs/orb/orbss/ansible-lint)
-before updating a consumer. See [CHANGELOG.md](CHANGELOG.md) for release status.
+The usage examples target `orbss/ansible-lint@2.0.0`. Use them once that
+version is published in the [Orb registry](https://circleci.com/developer/orbs/orb/orbss/ansible-lint).
+For existing configurations, see [Updating from 1.1.0 to 2.0.0](#updating-from-110-to-200).
+Release status is recorded in the [changelog](CHANGELOG.md).
 
 ## Usage
 
@@ -32,28 +33,28 @@ before updating a consumer. See [CHANGELOG.md](CHANGELOG.md) for release status.
 | Job time | No installation step | Longer by the time `install` takes |
 | Available from | 1.0.0 | 1.1.0 |
 
-Existing users can keep the default executor path. Updating the Orb reference
-to 1.1.0 needs no `install` step (see [Updating from 1.0.0](#updating-from-100)).
+You can keep your current executor and step order when updating to 2.0.0.
 
 A job uses one path. Do not add `install` to a job on the `default` executor:
 `install` rejects that image (see [Failures](#failures)).
 
 ### Default executor path
 
-Add this to `.circleci/config.yml` in a repository containing Ansible files:
+This `.circleci/config.yml` installs the current repository as an Ansible role before linting.
 
 ```yaml
 version: 2.1
 
 orbs:
-  ansible-lint: orbss/ansible-lint@1.1.0
+  ansible-lint: orbss/ansible-lint@2.0.0
 
 jobs:
   lint:
     executor: ansible-lint/default
     steps:
       - checkout
-      - ansible-lint/execute
+      - ansible-lint/execute:
+          molecule_role_test: true
 
 workflows:
   lint:
@@ -68,18 +69,17 @@ arguments and does not install `ansible-lint` into an arbitrary executor: the
 executor must already provide the tools. The separate `install` command of the
 python executor path installs them, and only on verified images.
 
-For an Ansible role repository, replace the command step with:
+Calling the command on its own uses the defaults for both keys.
 
 ```yaml
-- ansible-lint/execute:
-    molecule-role-test: true
+- ansible-lint/execute
 ```
 
 For a playbook repository with `roles/requirements.yml`, use:
 
 ```yaml
 - ansible-lint/execute:
-    molecule-playbook-test: true
+    molecule_playbook_test: true
 ```
 
 These options install roles before linting. They do not run Molecule tests.
@@ -93,7 +93,7 @@ Add this to `.circleci/config.yml` instead:
 version: 2.1
 
 orbs:
-  ansible-lint: orbss/ansible-lint@1.1.0
+  ansible-lint: orbss/ansible-lint@2.0.0
 
 jobs:
   lint-with-install:
@@ -111,7 +111,7 @@ workflows:
 
 `install` prepares the tools for the later steps of the same job, and
 `execute` then works as in the default executor path. For role and playbook
-repositories, pass `molecule-role-test: true` or `molecule-playbook-test: true`
+repositories, pass `molecule_role_test: true` or `molecule_playbook_test: true`
 to `execute` as shown above. The [source example](src/examples/lint-with-install.yml)
 shows the normal case.
 
@@ -140,14 +140,9 @@ limits.
 
 The API source is [src/](src/). No reusable jobs are exported.
 
-1.1.0 adds the `python` executor and the `install` command. The `default`
-executor and the `execute` command are unchanged from 1.0.0. The detailed
-contract of the new path is
-[docs/python-install-contract.md](docs/python-install-contract.md). That
-contract also records the published 1.0.0 `default` and `execute` definitions
-that 1.1.0 keeps unchanged. `src/` holds the implemented API definitions, this
-README explains usage, and the contract holds the detailed rules of the new
-path.
+Version 1.1.0 introduced the `python` executor and the `install` command.
+Version 2.0.0 renames the two parameters of `execute` on both executor paths.
+See the [2.0.0 calling contract](docs/python-install-contract.md#231-calling-execute).
 
 ### Executor: `ansible-lint/default`
 
@@ -201,16 +196,16 @@ supported just because a job accepts it, pulls it, or starts.
 
 | Parameter | Type | Default | Meaning |
 | --- | --- | --- | --- |
-| `molecule-role-test` | boolean | `false` | Install the current repository at `CIRCLE_SHA1` as an Ansible role. |
-| `molecule-playbook-test` | boolean | `false` | Install roles from `roles/requirements.yml`. |
+| `molecule_role_test` | boolean | `false` | Install the current repository at `CIRCLE_SHA1` as an Ansible role. |
+| `molecule_playbook_test` | boolean | `false` | Install roles from `roles/requirements.yml`. |
 
 The command performs these steps in order:
 
 1. Display `ansible-lint --version`.
 2. Display `ansible --version` and `ansible-community --version`.
-3. If `molecule-role-test` is true, run
+3. If `molecule_role_test` is true, run
    `ansible-galaxy install "git+${CIRCLE_REPOSITORY_URL},${CIRCLE_SHA1}"`.
-4. If `molecule-playbook-test` is true, run
+4. If `molecule_playbook_test` is true, run
    `ansible-galaxy install -r roles/requirements.yml`.
 5. Install each existing `molecule/*/requirements.yml` with
    `ansible-galaxy install -r`, independently of both flags.
@@ -561,6 +556,50 @@ Consumers that need independence from future default-image updates can set
 `image` of the `default` executor to their own full digest reference. The
 `python` executor supports only verified images; to keep its image and tool
 set, keep the Orb reference at the same version.
+
+## Updating from 1.1.0 to 2.0.0
+
+Once 2.0.0 is published, change the Orb reference in `.circleci/config.yml`
+and rename each key you pass to `ansible-lint/execute`. Keep its boolean value.
+
+| 1.1.0 key | 2.0.0 key | Default | Installed when true |
+| --- | --- | --- | --- |
+| `molecule-role-test` | `molecule_role_test` | `false` | The current repository at `CIRCLE_SHA1` as an Ansible role |
+| `molecule-playbook-test` | `molecule_playbook_test` | `false` | The roles listed in `roles/requirements.yml` |
+
+For example, this job installs the current repository as a role and explicitly
+disables installation from `roles/requirements.yml`. Both keys need the new
+spelling. CircleCI rejects either old key before the job starts, even when
+its value is `false` or the new spelling is also present.
+
+```diff
+ version: 2.1
+ orbs:
+-  ansible-lint: orbss/ansible-lint@1.1.0
++  ansible-lint: orbss/ansible-lint@2.0.0
+ jobs:
+   lint:
+     executor: ansible-lint/default
+     steps:
+       - checkout
+       - ansible-lint/execute:
+-          molecule-role-test: true
+-          molecule-playbook-test: false
++          molecule_role_test: true
++          molecule_playbook_test: false
+ workflows:
+   lint:
+     jobs:
+       - lint
+```
+
+If you omit both keys, update only the Orb reference. To defer migration,
+keep `orbss/ansible-lint@1.1.0` and your existing keys.
+
+If both flags are `true`, `execute` installs the current role first and the
+roles listed in `roles/requirements.yml` second. With any combination of flags,
+it then processes each matching `molecule/*/requirements.yml`, runs
+`ansible-lint` without arguments and returns its exit code.
 
 ## Updating from 1.0.0
 
