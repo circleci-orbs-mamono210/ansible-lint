@@ -27,6 +27,52 @@ lint external installed roles as project input. Dependency installation, version
 checks and Ansible syntax loading remain enabled; no lint rule is skipped.
 Setup checks the discovered playbook project root before execute.
 
+## Compile-time checks for the 2.0.0 execute parameters (#5555)
+
+In the `test-deploy` workflow, `validate-execute-config` waits for
+`orb-tools/pack` and attaches its workspace. It checks the SHA-256 of
+`orb_source.tar.gz` and its `./orb.yml` member against that job's successful
+`baseline-publication.json`, including the full candidate commit and pipeline
+ID. It parses the member once and embeds its contents under
+`orbs.ansible-lint` in each of six independent consumer configs.
+Each config has the same `verify` workflow, `consumer` job, default executor,
+checkout and `ansible-lint/execute` step. Each supplied argument is true.
+
+| Input artifact | Arguments to `execute` | Expected compiler result |
+| --- | --- | --- |
+| `role.yml` | `molecule_role_test` | Accepted |
+| `playbook.yml` | `molecule_playbook_test` | Accepted |
+| `both.yml` | `molecule_role_test`, `molecule_playbook_test` | Accepted |
+| `omitted.yml` | Both omitted | Accepted |
+| `legacy-role.yml` | `molecule-role-test` | `Unexpected argument(s): molecule-role-test` |
+| `legacy-playbook.yml` | `molecule-playbook-test` | `Unexpected argument(s): molecule-playbook-test` |
+
+Each legacy input changes only the spelling of the key in its matching
+single-argument positive. The job sends each config to CircleCI's
+`POST /api/v3/configs/compile` using anonymous HTTPS. The request supplies
+only the config. It compiles the consumer workflow without running its steps.
+Both repository jobs run without a context. They use no additional credential
+and perform no dev publish.
+
+All four accepted results must include the referenced consumer job, its
+expanded run steps and both resolved flag values (omitted flags default to
+false). For each legacy input the compiler must report one error
+through `verify`, `consumer` and `ansible-lint/execute`, ending with the exact
+diagnostic in the table. An accepted legacy key, wrong or additional error,
+authentication or transport failure, missing workflow reference, or unprocessed
+case fails the job. Inputs and successful expansions are stored under
+`execute-config-evidence`. Its `execute-config-summary.json` records per-case
+outcomes and diagnostics, input hashes, the pack and validation job URLs,
+archive and member hashes, candidate SHA, pipeline ID and authentication mode.
+Use that SHA and pipeline ID to locate the setup pack's
+`packed-orb-structure/baseline-injection.json` and the continuation pack's
+`packed-orb-structure/baseline-publication.json`.
+
+`verify-execute-config-evidence` requires `validate-execute-config` to succeed.
+It reads the summary from the same workflow workspace, checks all six outcomes
+and the commit and pipeline ID, then logs the upstream and downstream job URLs.
+The production publish dependency is tracked separately in #5557.
+
 ## Dependency observations
 
 `integration-test.py` wraps `ansible-galaxy` only inside the test job, forwards its

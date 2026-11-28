@@ -129,6 +129,39 @@ commands:
             /tmp/ansible-lint-orb-source << parameters.scenario >>
 
 jobs:
+  validate-execute-config:
+    executor: ansible-lint/default
+    steps:
+      - checkout
+      - attach_workspace:
+          at: /tmp/execute-config-input
+      - run:
+          name: Compile six consumer configs against the verified candidate pack
+          environment:
+            CONFIG_PIPELINE_ID: << pipeline.id >>
+          command: >-
+            python3 .circleci/validate-execute-config.py check
+            /tmp/execute-config-input /tmp/execute-config-evidence
+      - store_artifacts:
+          path: /tmp/execute-config-evidence
+          destination: execute-config-evidence
+      - persist_to_workspace:
+          root: /tmp/execute-config-evidence
+          paths:
+            - execute-config-summary.json
+  verify-execute-config-evidence:
+    executor: ansible-lint/default
+    steps:
+      - checkout
+      - attach_workspace:
+          at: /tmp/execute-config-input
+      - run:
+          name: Verify the six results from the required validation job
+          environment:
+            CONFIG_PIPELINE_ID: << pipeline.id >>
+          command: >-
+            python3 .circleci/validate-execute-config.py confirm
+            /tmp/execute-config-input
   normal-test:
     executor: ansible-lint/default
     working_directory: /tmp/ansible-lint-case
@@ -590,6 +623,18 @@ workflows:
             - store_artifacts:
                 path: /tmp/ansible-lint-pack-evidence
                 destination: packed-orb-structure
+            - persist_to_workspace:
+                root: /tmp/ansible-lint-pack-evidence
+                paths:
+                  - baseline-publication.json
+          filters: *filters
+      - validate-execute-config:
+          requires:
+            - orb-tools/pack
+          filters: *filters
+      - verify-execute-config-evidence:
+          requires:
+            - validate-execute-config
           filters: *filters
       - orb-tools/publish:
           orb_name: orbss/ansible-lint
