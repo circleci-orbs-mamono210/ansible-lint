@@ -1,14 +1,14 @@
-# Integration tests for issue #5501
+# Ansible lint Orb integration tests
 
-All six CircleCI jobs use the public `ansible-lint/execute` from the same commit's
+The six default-executor jobs below use the public `ansible-lint/execute` from the same commit's
 packed Orb, injected by orb-tools 12.5.0. Only production publish receives
 `CIRCLECI_ORBS`. No test needs a dev publish or publishing token.
 
 | Job | Local input | Public parameters | Required observation |
 | --- | --- | --- | --- |
 | `normal-test` | `tests/fixtures/normal/playbook.yml` | Both default to false | Exactly one Ansible file processed, zero failures/warnings, exit 0; no dependency install |
-| `role-test` | `test_resources/` | `molecule-role-test: true` | Install this repository at `CIRCLE_SHA1`, then the fixed Molecule dependency; lint succeeds |
-| `playbook-test` | `tests/fixtures/playbook/` | `molecule-playbook-test: true` | Install both requirements files, verify both distinct role names/revisions; lint succeeds |
+| `role-test` | `test_resources/` | `molecule_role_test: true` | Install this repository at `CIRCLE_SHA1`, then the fixed Molecule dependency; lint succeeds |
+| `playbook-test` | `tests/fixtures/playbook/` | `molecule_playbook_test: true` | Install both requirements files, verify both distinct role names/revisions; lint succeeds |
 | `negative-test` | `tests/fixtures/negative/playbook.yml` | Both default to false | Real exit 2, exactly one `name[missing]` at `playbook.yml:6`; only the separately recorded notices below may accompany it |
 | `resource-class-test` | Playbook fixture | Playbook flag, executor `resource_class: medium` | Same dependency assertions and successful lint in the explicit resource class |
 | `custom-image-test` | Playbook fixture | Playbook flag, explicit separate image digest | Required executables/versions, both dependency installs and successful lint |
@@ -102,8 +102,7 @@ status propagation. Stub results are not real-linter evidence.
 
 The real negative run's final CircleCI step succeeds because the observer accepts
 the expected failure. It does **not** observe a failed CircleCI step. Product exit
-propagation is checked separately in the packed output below. Public `src/` stays
-unchanged by this ticket.
+propagation is checked separately in the packed output below.
 
 ## Actual packed output and publish gates
 
@@ -118,13 +117,56 @@ The final execute step must contain only `run`; its attributes may only be
 Pipelines, status masking, background/environment/when/shell/other attributes are
 rejected. The check records source commit/tree, archive/packed-file SHA-256,
 purpose and job URL. Setup continue requires the successful setup pack. Production
-publish requires its own successful pack plus all six integration jobs, including
-the negative observer's self-tests. All prerequisite jobs accept tags; production
+publish requires its own successful pack and the six default-path and fourteen
+additional integration jobs, including the negative observer's self-tests. All prerequisite jobs accept tags; production
 publish accepts only semantic version tags and excludes all branches.
 
-## v1.1.0 baseline comparison of the existing API (#5538)
+## v2.0.0 pack jobs and continuation (#5554)
 
-Both `orb-tools/pack` jobs also compare the actual packed Orb with the
+Both pack jobs run the following post-steps in order on their own
+`dist/orb_source.tar.gz`. The candidate is the full `CIRCLE_SHA1` checked out
+by the job.
+
+1. `verify-packed-orb.sh` checks the final lint command in `./orb.yml`.
+2. `test-compare-baseline.sh` runs the 2.0.0 suite from that checkout.
+   Every case must pass, including the negative cases. A skipped case fails CI.
+3. The very next run step calls `verify-packed-baseline.sh`. It verifies the
+   self-test report's release, purpose, commit, job URL and script hashes,
+   then calls the tested comparator on this job's archive. The identity record
+   selects the published 1.1.0 source and the six differences adopted in #5552.
+   The stored size and SHA-256, all four definitions, all six changes and the
+   public executor, command and job name sets must match.
+4. `verify-packed-install.sh` checks the packed install command and Python image.
+
+| Purpose | Pack job and consumer | Evidence in the job's `packed-orb-structure` artifacts |
+| --- | --- | --- |
+| `injection` | In `lint-pack`, `orb-tools/continue` requires the setup pack. It injects that pack as `ansible-lint` into `.circleci/test-deploy.yml` and starts `test-deploy`. | `baseline-self-test-2.0.0-injection.json` and `baseline-injection.json` |
+| `publication` | In `test-deploy`, the second pack builds its own archive. Production publish requires this pack and the integration jobs and runs on release tags. | `baseline-self-test-2.0.0-publication.json` and `baseline-publication.json` |
+
+For the #5555 and #5557 handoff, match `pipeline_id` and the full `commit`
+across the two pack reports. Each `job_url` identifies its own run. In each
+report, `self_test.file` and `self_test.report_sha256` identify the preceding
+suite result, `candidate.sha256` identifies the actual `./orb.yml`, and
+`archive_sha256` identifies its tarball. A passing real comparison has
+`category` equal to `adopted-differences`. The accepted changes, public
+names and hashes of the baseline and adopted list are retained in the report.
+The pipeline's successful `orb-tools/continue` job and the started
+`test-deploy` workflow are the evidence of continuation.
+
+The regular continuation calls `ansible-lint/execute` directly or through
+its internal `python-path` command. Both use the public names
+`molecule_role_test` and `molecule_playbook_test`. The wrapper declares two
+boolean parameters with default `false` and forwards each to the matching
+public parameter. The role and playbook jobs below show the individual flags.
+The old names belong to the 1.1.0 source and examples for that release, the
+migration mapping, and inputs that exercise removal or rejection of an old
+key. Ticket #5555 covers the configuration-processing tests, and #5556
+covers the consumer README, changelog and public examples.
+
+## Historical v1.1.0 baseline comparison (#5538)
+
+This section records the v1.1.0 checks and file names. For that release,
+both `orb-tools/pack` jobs compared the actual packed Orb with the
 published `orbss/ansible-lint@1.0.0`. The rule is section 5 of
 [the contract](../docs/python-install-contract.md): in 1.1.0,
 `executors.default` and `commands.execute` must not differ from 1.0.0. This
@@ -388,7 +430,7 @@ bash .circleci/compare-baseline.sh . tests/baseline/orbss-ansible-lint-1.1.0.jso
 
 `$archive` names the input tar.gz and `$result_json` names the output file.
 The v1.1.0 self-test is still the default when the third argument is omitted.
-Ticket #5554 switches both pack jobs to the v2.0.0 suite and identity record.
+Both pack jobs explicitly select 2.0.0 and compare against the 1.1.0 identity record.
 
 ### Inputs and expected results
 
@@ -454,7 +496,7 @@ The new path is the `python` executor, then `ansible-lint/install`, then
   existing path and the pack checks. The filters are the existing ones.
 - The six jobs of the existing path, their fixtures, expected values, and
   accepted notices are unchanged. None of them calls `install`.
-- Nothing under `src/` is changed, and no test-only public parameter exists.
+- These repository tests use the public parameters of `execute`.
 
 ### Jobs
 
@@ -466,8 +508,8 @@ copies only its fixture into the empty working directory
 | --- | --- | --- | --- |
 | `python-executor-test` | `python`, defaults | None | Minimal job of #5536: the default image pulls and starts and has the prerequisites of `install` (P0 to P11) |
 | `python-install-test` | `python`, defaults | `tests/fixtures/normal` plus a `.python-version` probe; both flags false; no requirements file | Minimal job of #5537 (T0 to T14), now also T15 and T16. No dependency is installed |
-| `python-role-test` | `python`, defaults | `test_resources/`; `molecule-role-test: true` | This repository at `CIRCLE_SHA1` and then the Molecule requirements are installed; lint passes |
-| `python-playbook-test` | `python`, defaults | `tests/fixtures/playbook/`; `molecule-playbook-test: true` | Both requirements files are installed, in order; lint passes |
+| `python-role-test` | `python`, defaults | `test_resources/`; `molecule_role_test: true` | This repository at `CIRCLE_SHA1` and then the Molecule requirements are installed; lint passes |
+| `python-playbook-test` | `python`, defaults | `tests/fixtures/playbook/`; `molecule_playbook_test: true` | Both requirements files are installed, in order; lint passes |
 | `python-molecule-test` | `python`, defaults | `test_resources/`; both flags false | Only the Molecule requirements are installed; lint passes |
 | `python-negative-test` | `python`, defaults | `tests/fixtures/negative`; both flags false | The real lint ends with 2 and reports exactly the expected violation |
 | `python-resource-class-test` | `python`, `resource_class: medium` | Playbook fixture and flag | The container has the memory limit of `medium`; the path works there |

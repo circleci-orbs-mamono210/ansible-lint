@@ -21,10 +21,14 @@ workflows:
                 name: Verify the actual injection archive preserves the exit code
                 command: bash .circleci/verify-packed-orb.sh dist/orb_source.tar.gz injection
             - run:
-                name: Self-test the exact baseline comparison used below
-                command: bash .circleci/test-compare-baseline.sh injection
+                name: Run the 2.0.0 self-test for the injection pack
+                command: >-
+                  bash .circleci/test-compare-baseline.sh injection
+                  /tmp/ansible-lint-pack-evidence 2.0.0
             - run:
-                name: Verify the actual injection archive keeps the published 1.0.0 default and execute
+                name: Compare the injection pack with the 1.1.0 baseline and six adopted changes
+                environment:
+                  PACK_PIPELINE_ID: << pipeline.id >>
                 command: bash .circleci/verify-packed-baseline.sh dist/orb_source.tar.gz injection
             - run:
                 name: Verify the actual injection archive holds this commit's install command
@@ -35,8 +39,7 @@ workflows:
           filters: *filters
       - orb-tools/review:
           orb_name: ansible-lint
-          # Keep the public kebab-case parameters compatible in 1.0.0.
-          # Remove RC010 after the public API is snake_cased in 2.0.0.
+          # #5557 enables RC010 as a 2.0.0 publication check.
           exclude: RC010
           filters: *filters
       - shellcheck/check:

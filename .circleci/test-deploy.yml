@@ -83,10 +83,10 @@ commands:
     parameters:
       case:
         type: string
-      molecule-role-test:
+      molecule_role_test:
         type: boolean
         default: false
-      molecule-playbook-test:
+      molecule_playbook_test:
         type: boolean
         default: false
     steps:
@@ -101,8 +101,8 @@ commands:
           phase: after-install
           title: Check the managed environment and command resolution in a separate step
       - ansible-lint/execute:
-          molecule-role-test: << parameters.molecule-role-test >>
-          molecule-playbook-test: << parameters.molecule-playbook-test >>
+          molecule_role_test: << parameters.molecule_role_test >>
+          molecule_playbook_test: << parameters.molecule_playbook_test >>
       - check-python-install:
           phase: after-execute
           title: Require the expected calls, dependencies and lint result of the real execute
@@ -147,7 +147,7 @@ jobs:
       - prepare-integration:
           case: role
       - ansible-lint/execute:
-          molecule-role-test: true
+          molecule_role_test: true
       - verify-integration
       - collect-ci-evidence
   playbook-test:
@@ -157,7 +157,7 @@ jobs:
       - prepare-integration:
           case: playbook
       - ansible-lint/execute:
-          molecule-playbook-test: true
+          molecule_playbook_test: true
       - verify-integration
       - collect-ci-evidence
   negative-test:
@@ -196,7 +196,7 @@ jobs:
       - prepare-integration:
           case: resource-class
       - ansible-lint/execute:
-          molecule-playbook-test: true
+          molecule_playbook_test: true
       - verify-integration
       - collect-ci-evidence
   custom-image-test:
@@ -210,7 +210,7 @@ jobs:
           case: custom-image
           image-lock: tests/custom-image-lock.json
       - ansible-lint/execute:
-          molecule-playbook-test: true
+          molecule_playbook_test: true
       - verify-integration
       - collect-ci-evidence
   python-executor-test:
@@ -261,14 +261,14 @@ jobs:
     steps:
       - python-path:
           case: role
-          molecule-role-test: true
+          molecule_role_test: true
   python-playbook-test:
     executor: ansible-lint/python
     working_directory: /tmp/ansible-lint-case
     steps:
       - python-path:
           case: playbook
-          molecule-playbook-test: true
+          molecule_playbook_test: true
   python-molecule-test:
     # Both flags are false, and Molecule requirements exist.
     executor: ansible-lint/python
@@ -308,7 +308,7 @@ jobs:
     steps:
       - python-path:
           case: resource-class
-          molecule-playbook-test: true
+          molecule_playbook_test: true
   # --- New path: other supported uses ------------------------------------
   python-direct-docker-test:
     # Contract E3: a job that names the verified digest itself. Both pack jobs
@@ -575,10 +575,14 @@ workflows:
                 name: Verify the actual publication archive preserves the exit code
                 command: bash .circleci/verify-packed-orb.sh dist/orb_source.tar.gz publication
             - run:
-                name: Self-test the exact baseline comparison used below
-                command: bash .circleci/test-compare-baseline.sh publication
+                name: Run the 2.0.0 self-test for the publication pack
+                command: >-
+                  bash .circleci/test-compare-baseline.sh publication
+                  /tmp/ansible-lint-pack-evidence 2.0.0
             - run:
-                name: Verify the actual publication archive keeps the published 1.0.0 default and execute
+                name: Compare the publication pack with the 1.1.0 baseline and six adopted changes
+                environment:
+                  PACK_PIPELINE_ID: << pipeline.id >>
                 command: bash .circleci/verify-packed-baseline.sh dist/orb_source.tar.gz publication
             - run:
                 name: Verify the actual publication archive holds this commit's install command
