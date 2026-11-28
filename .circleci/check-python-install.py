@@ -46,6 +46,7 @@ EPEL_REPOSITORY = "https://github.com/ansible-roles-mamono210/epel"
 REPOSITORY = "https://github.com/circleci-orbs-mamono210/ansible-lint"
 ROLES = Path("/tmp/ansible-lint-installed-roles")
 GIT_EVIDENCE = Path("/tmp/ansible-lint-ci-evidence")
+PLAYBOOK = ["install", "-r", "roles/requirements.yml"]
 MOLECULE = ["install", "-r", "molecule/default/requirements.yml"]
 # CircleCI Docker resource classes: CPU cores and memory in bytes.
 RESOURCE_CLASSES = {"small": (1.0, 2 * 1024 ** 3), "medium": (2.0, 4 * 1024 ** 3)}
@@ -76,11 +77,16 @@ CASES = {
              "roles": [["ansible-lint", "COMMIT"], ["mamono210.epel", EPEL]],
              "lint": "passed", "marker": True, "resource_class": "small"},
     "playbook": {"fixture": "tests/fixtures/playbook", "probe": False,
-                 "galaxy": [["install", "-r", "roles/requirements.yml"], MOLECULE],
+                 "galaxy": [PLAYBOOK, MOLECULE],
                  "roles": [["fixture_playbook_epel", EPEL], ["fixture_molecule_epel", EPEL]],
                  "lint": "passed", "marker": True, "resource_class": "small"},
+    "both": {"fixture": "tests/fixtures/playbook", "probe": False,
+             "galaxy": ["SELF", PLAYBOOK, MOLECULE],
+             "roles": [["ansible-lint", "COMMIT"], ["fixture_playbook_epel", EPEL],
+                       ["fixture_molecule_epel", EPEL]],
+             "lint": "passed", "marker": True, "resource_class": "small"},
     "resource-class": {"fixture": "tests/fixtures/playbook", "probe": False,
-                       "galaxy": [["install", "-r", "roles/requirements.yml"], MOLECULE],
+                       "galaxy": [PLAYBOOK, MOLECULE],
                        "roles": [["fixture_playbook_epel", EPEL], ["fixture_molecule_epel", EPEL]],
                        "lint": "passed", "marker": True, "resource_class": "medium"},
     "negative": {"fixture": "tests/fixtures/negative", "probe": False, "galaxy": [], "roles": [],
@@ -443,7 +449,7 @@ def context(source, lock, image_lock, case):
     return {
         "observed_at": now(),
         "ticket": 5537,
-        "expanded_by": 5539,
+        "expanded_by": 5557 if case == "both" else 5539,
         "case": case,
         "commit": os.environ.get("CIRCLE_SHA1"),
         "job": os.environ.get("CIRCLE_JOB"),
@@ -1071,8 +1077,11 @@ def after_execute(source):
             if records_file.exists() else []
         archives = [record for record in records if record.get("kind") == "installed-role-archive"]
         allowed = [[EPEL_REPOSITORY, EPEL]] if settings["roles"] else []
-        if case == "role":
-            allowed.append([repository_name(os.environ.get("CIRCLE_REPOSITORY_URL", "")), state["commit"]])
+        installs_self = "SELF" in settings["galaxy"]
+        repository_matches = (not installs_self
+                              or repository_name(os.environ.get("CIRCLE_REPOSITORY_URL", "")) == REPOSITORY)
+        if installs_self:
+            allowed.append([REPOSITORY, state["commit"]])
         seen = [[record["repository"], record["commit"]] for record in archives]
         recorder.check("T17", "execute installed exactly the expected roles at the pinned revisions, every "
                        "Git archive came from an expected repository and commit, and the Git observer "
@@ -1083,7 +1092,7 @@ def after_execute(source):
                        and all(item in allowed for item in seen)
                        and all(item in seen for item in allowed)
                        and not (GIT_EVIDENCE / "errors.jsonl").exists()
-                       and (case != "role" or allowed[1][0] == REPOSITORY),
+                       and repository_matches,
                        {"roles": roles, "roles_directory": str(ROLES), "roles_present": present,
                         "archives": [{key: record.get(key) for key in ("repository", "commit", "tree",
                                                                        "archive_sha256")}
@@ -1100,7 +1109,7 @@ def after_execute(source):
                                              for call in calls],
                          "traced_run_stderr": traced["stderr"] if traced else None}})
     phases = {phase: load(EVIDENCE / (phase + ".json")) for phase in ("before", "after-install", "after-execute")}
-    combined = {"ticket": 5537, "expanded_by": 5539, "case": case,
+    combined = {"ticket": 5537, "expanded_by": phases["before"]["context"]["expanded_by"], "case": case,
                 "result": "passed" if code == 0 else "failed",
                 "commit": os.environ.get("CIRCLE_SHA1"), "job": os.environ.get("CIRCLE_JOB"),
                 "job_url": os.environ.get("CIRCLE_BUILD_URL"),

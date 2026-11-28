@@ -159,9 +159,15 @@ jobs:
           name: Verify the six results from the required validation job
           environment:
             CONFIG_PIPELINE_ID: << pipeline.id >>
-          command: >-
-            python3 .circleci/validate-execute-config.py confirm
-            /tmp/execute-config-input
+          command: |
+            set -eu
+            workspace=/tmp/execute-config-input
+            python3 .circleci/validate-execute-config.py confirm "$workspace"
+            cp "$workspace/execute-config-summary.json" "$workspace/confirmed-execute-config.json"
+      - persist_to_workspace:
+          root: /tmp/execute-config-input
+          paths:
+            - confirmed-execute-config.json
   normal-test:
     executor: ansible-lint/default
     working_directory: /tmp/ansible-lint-case
@@ -301,6 +307,14 @@ jobs:
     steps:
       - python-path:
           case: playbook
+          molecule_playbook_test: true
+  python-both-flags-test:
+    executor: ansible-lint/python
+    working_directory: /tmp/ansible-lint-case
+    steps:
+      - python-path:
+          case: both
+          molecule_role_test: true
           molecule_playbook_test: true
   python-molecule-test:
     # Both flags are false, and Molecule requirements exist.
@@ -581,6 +595,8 @@ workflows:
           filters: *filters
       - python-playbook-test:
           filters: *filters
+      - python-both-flags-test:
+          filters: *filters
       - python-molecule-test:
           filters: *filters
       - python-negative-test:
@@ -642,8 +658,26 @@ workflows:
           pub_type: production
           circleci_token: CIRCLE_TOKEN
           enable_pr_comment: false
+          pre-steps:
+            - attach_workspace:
+                at: /tmp/validated-publication-pack
+            - run:
+                name: Require the confirmed configuration results for this release archive
+                environment:
+                  CONFIG_PIPELINE_ID: << pipeline.id >>
+                command: |
+                  set -eu
+                  cd /tmp/validated-publication-pack
+                  archive_hash=$(sha256sum orb_source.tar.gz)
+                  jq -es --arg commit "${CIRCLE_SHA1:?}" --arg pipeline "${CONFIG_PIPELINE_ID:?}" \
+                    --arg archive "${archive_hash%% *}" '
+                      length == 1 and (.[0] | .result == "passed" and .commit == $commit
+                        and .pipeline_id == $pipeline and .pack.archive_sha256 == $archive)
+                    ' confirmed-execute-config.json > /dev/null
           requires:
             - orb-tools/pack
+            - validate-execute-config
+            - verify-execute-config-evidence
             - normal-test
             - role-test
             - playbook-test
@@ -654,6 +688,7 @@ workflows:
             - python-install-test
             - python-role-test
             - python-playbook-test
+            - python-both-flags-test
             - python-molecule-test
             - python-negative-test
             - python-resource-class-test

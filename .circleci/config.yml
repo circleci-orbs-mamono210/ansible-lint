@@ -39,8 +39,16 @@ workflows:
           filters: *filters
       - orb-tools/review:
           orb_name: ansible-lint
-          # #5557 enables RC010 as a 2.0.0 publication check.
-          exclude: RC010
+          post-steps:
+            - run:
+                name: Verify the RC010 result for this candidate
+                when: always
+                environment:
+                  REVIEW_PIPELINE_ID: << pipeline.id >>
+                command: python3 .circleci/verify-rc010.py /tmp/orb_dev_kit/review
+            - store_artifacts:
+                path: /tmp/orb_dev_kit/review
+                destination: naming-review
           filters: *filters
       - shellcheck/check:
           exclude: SC2196

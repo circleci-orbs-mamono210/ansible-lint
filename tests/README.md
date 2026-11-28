@@ -71,7 +71,65 @@ Use that SHA and pipeline ID to locate the setup pack's
 `verify-execute-config-evidence` requires `validate-execute-config` to succeed.
 It reads the summary from the same workflow workspace, checks all six outcomes
 and the commit and pipeline ID, then logs the upstream and downstream job URLs.
-The production publish dependency is tracked separately in #5557.
+Only after these checks pass does the verifier persist `confirmed-execute-config.json`
+for the production publish job.
+
+## v2.0.0 release checks (#5557)
+
+The setup workflow runs `orb-tools/review` with RC010 enabled. In
+`circleci/orb-tools@12.5.0`, RC010 checks the basenames of `*.yml` files in
+`src/jobs`, `src/commands` and `src/executors` and their top-level parameter
+names for hyphens. The two findings against v1.1.0 were the `execute` parameters
+`molecule-role-test` and `molecule-playbook-test`. The example file
+`src/examples/lint-with-install.yml` and the job defined inside the example are
+outside the directories inspected by this rule.
+[RC010 implementation at 78fe512](https://github.com/CircleCI-Public/orb-tools-orb/blob/78fe512bb2b1355667ef0f53bb8e7518f519332c/src/scripts/review.bats#L198-L229)
+
+In the review job, open the Tests tab or the JUnit XML under `naming-review`.
+The post-step requires exactly one RC010 result and fails on a skipped, failed,
+missing or duplicate result. `naming-review/rc010.json` associates the result
+with the checked-out SHA, pipeline ID, job URL and rule source.
+
+`python-both-flags-test` uses the standard Python path with checkout,
+`ansible-lint/install` and `ansible-lint/execute`. It sets both
+`molecule_role_test` and `molecule_playbook_test` to true. The existing
+`tests/fixtures/playbook` supplies one playbook requirements file and one
+Molecule requirements file. The job observes three real `ansible-galaxy`
+calls, in this order.
+
+| Order | Arguments to `ansible-galaxy` | Installed role | Expected revision |
+| --- | --- | --- | --- |
+| 1 | `install git+${CIRCLE_REPOSITORY_URL},${CIRCLE_SHA1}` | `ansible-lint` | Candidate `CIRCLE_SHA1` |
+| 2 | `install -r roles/requirements.yml` | `fixture_playbook_epel` | `747af654d2a2e05c1cfabce9c0b79b2a1eae3650` |
+| 3 | `install -r molecule/default/requirements.yml` | `fixture_molecule_epel` | `747af654d2a2e05c1cfabce9c0b79b2a1eae3650` |
+
+In `python-install-evidence/python-install.json`, T12 records the call order
+and the real exit codes, including the final no-argument lint returning 0.
+T13 requires at least one processed file and zero failures and warnings.
+T17 checks the three installed roles, their versions and the observed Git
+archives. The raw archive observations are in `git-archives.jsonl` in the
+same artifact directory.
+
+The release candidate keeps both single-flag cases on each executor
+(`role-test`, `playbook-test`, `python-role-test`, `python-playbook-test`).
+`python-molecule-test` still installs the Molecule dependency with both flags
+false. `negative-test` and `python-negative-test` each require the real lint
+exit code 2 and exactly the expected `name[missing]` violation.
+
+Production publish requires all six default-path jobs, the fourteen Python-path
+and install regression jobs from #5539, the new both-flags job, the continuation
+pack, and both configuration-validation jobs. All prerequisites accept release
+tags. Before publishing, the job requires the confirmed summary from its own
+workflow workspace and checks its successful result, commit, pipeline ID and
+the SHA-256 of the exact pack it will publish. A missing confirmation stops
+publication even if a filter omitted an upstream job.
+
+For #5558, use the full candidate SHA and pipeline ID to join the review,
+both packs' `packed-orb-structure/baseline-injection.json` and
+`baseline-publication.json` and their self-tests, the six-case
+`execute-config-summary.json`, and the integration jobs above. If the SHA
+changes, repeat the full candidate pipeline. The release tag, RC011 on the
+actual tag and the Registry publication are recorded in #5558.
 
 ## Dependency observations
 
@@ -163,9 +221,9 @@ The final execute step must contain only `run`; its attributes may only be
 Pipelines, status masking, background/environment/when/shell/other attributes are
 rejected. The check records source commit/tree, archive/packed-file SHA-256,
 purpose and job URL. Setup continue requires the successful setup pack. Production
-publish requires its own successful pack and the six default-path and fourteen
-additional integration jobs, including the negative observer's self-tests. All prerequisite jobs accept tags; production
-publish accepts only semantic version tags and excludes all branches.
+publish requires its own successful pack, the integration jobs and the
+[v2.0.0 release checks](#v200-release-checks-5557). All prerequisites accept
+tags. Production publish accepts only semantic version tags and excludes all branches.
 
 ## v2.0.0 pack jobs and continuation (#5554)
 
@@ -782,7 +840,7 @@ observers for `execute` only after `install`.
 | Artifact | Jobs | Content |
 | --- | --- | --- |
 | `python-executor-evidence` | `python-executor-test` | P0 to P11 |
-| `python-install-evidence` | Ten jobs with T checks | `python-install.json`: case, commit, job URL, every check with its observation; the three phase files |
+| `python-install-evidence` | Jobs using `check-python-install.py`, including `python-both-flags-test` | `python-install.json`: case, commit, job URL, every check with its observation; the three phase files |
 | `install-script-evidence` | Reinstall, pip settings, failure, explicit image, default | One file for each scenario: what the test set up, exit code, output, failure line, checks |
 | `packed-orb-structure` | Both pack jobs | `install-<purpose>.json`: packed command, fixed set, default image of `python`, and the reference of the direct Docker job |
 
