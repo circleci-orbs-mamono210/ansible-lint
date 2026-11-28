@@ -1,6 +1,7 @@
 #!/bin/bash
-# Compare executors.default and commands.execute of a packed Orb with the
-# published baseline (docs/python-install-contract.md, sections 5.3 and 5.4).
+# Compare a packed Orb using the supplied baseline identity record. The 1.0.0
+# record selects the 1.1.0 equality rule. The 1.1.0 record selects the 2.0.0
+# difference list and public name checks (contract sections 5 and 23).
 # verify-packed-baseline.sh runs this for the actual archives.
 # test-compare-baseline.sh runs this same file for isolated inputs.
 #
@@ -11,13 +12,14 @@
 #   result   file that receives the result as JSON
 #
 # Exit status:
-#    0  both targets equal the baseline
+#    0  the candidate meets the selected release policy
 #   20  the identity record is missing, unreadable, or not usable
 #   21  the stored copy is missing or is not a readable regular file
 #   22  the size or SHA-256 of the stored copy is not the expected value
+#   23  the expected difference list cannot be used
 #   30  the archive or its ./orb.yml cannot be read
 #   31  the packed Orb cannot be parsed, or its meaning depends on the parser
-#   40  a target differs from the baseline
+#   40  a definition or public name set differs from the selected policy
 #   50  the check itself cannot work (tools, or the verified baseline)
 #
 # Only mapping key order and comments are ignored. Quoting and block or flow
@@ -38,7 +40,7 @@ root=$1
 record=$2
 archive=$3
 result=$4
-targets=(executors.default commands.execute)
+here=$(cd "$(dirname "$0")" && pwd)
 
 for tool in yq jq tar sha256sum wc cut; do
   if ! command -v "$tool" > /dev/null; then
@@ -70,9 +72,16 @@ relative_path "$record" || stop 20 baseline-record "the record path must stay in
 if [ ! -f "$root/$record" ] || ! cp "$root/$record" "$temporary/record.json" 2> /dev/null; then
   stop 20 baseline-record "the identity record is missing or unreadable: $record"
 fi
+baseline_version=$(jq -er -s 'select(length == 1) | .[0].version' "$temporary/record.json") \
+  || stop 20 baseline-record "the record must contain a single JSON object with a version"
+case "$baseline_version" in
+  1.0.0) targets=(executors.default commands.execute) ;;
+  1.1.0) targets=(executors.default executors.python commands.execute commands.install) ;;
+  *) stop 20 baseline-record "unsupported comparison baseline: $baseline_version" ;;
+esac
 jq -e '
   (type == "object") and
-  (.orb | type == "string") and
+  (.orb == "orbss/ansible-lint") and
   (.version | type == "string") and
   (.expected | type == "object") and
   (.expected.size_bytes | type == "number" and . >= 0 and . == floor) and
@@ -86,9 +95,10 @@ copy_path=$(jq -r '.stored_copy.path' "$temporary/record.json")
 relative_path "$copy_path" || stop 20 baseline-record "the stored copy path must stay inside the root: $copy_path"
 
 # 2. The stored copy. Its size and SHA-256 are checked before it is parsed.
-if [ ! -f "$root/$copy_path" ] || ! cp "$root/$copy_path" "$temporary/baseline.yml" 2> /dev/null; then
-  stop 21 baseline-missing "the stored copy is missing or is not a readable regular file: $copy_path"
-fi
+[ -e "$root/$copy_path" ] || stop 21 baseline-missing "the stored copy is missing: $copy_path"
+[ -f "$root/$copy_path" ] || stop 21 baseline-missing "the stored copy is not a regular file: $copy_path"
+cp "$root/$copy_path" "$temporary/baseline.yml" 2> /dev/null \
+  || stop 21 baseline-missing "cannot read the stored copy: $copy_path"
 expected_size=$(jq -r '.expected.size_bytes' "$temporary/record.json")
 expected_sha256=$(jq -r '.expected.sha256' "$temporary/record.json")
 actual_size=$(wc -c < "$temporary/baseline.yml" | tr -d '[:space:]')
@@ -102,6 +112,23 @@ fi
 jq -e '(.stored_copy.size_bytes == .expected.size_bytes) and (.stored_copy.sha256 == .expected.sha256)' \
   "$temporary/record.json" > /dev/null \
   || stop 22 baseline-mismatch "the record describes its stored copy with values other than the expected ones"
+
+# The previous release uses an empty policy. The 2.0.0 identity record names
+# the adopted list in the candidate checkout; an absent list is an error.
+policy_file="$temporary/policy.json"
+printf '%s\n' '{"entries":[],"public_names":{}}' > "$policy_file"
+list_path=''
+list_sha256=''
+policy_sha256=''
+if [ "$baseline_version" = 1.1.0 ]; then
+  list_path=$(jq -er '.ci_reference.expected_differences | strings' "$temporary/record.json") \
+    || stop 23 expected-differences "the record must name its expected difference list"
+  relative_path "$list_path" || stop 23 expected-differences "list path must stay inside the root: $list_path"
+  if [ ! -f "$root/$list_path" ] || ! cp "$root/$list_path" "$temporary/list.json" 2>/dev/null; then
+    stop 23 expected-differences "missing or unreadable difference list: $list_path"
+  fi
+  list_sha256=$(sha256sum < "$temporary/list.json" | cut -d ' ' -f 1)
+fi
 
 # 3. The packed Orb, read from the archive without changing or repacking it.
 if [ ! -f "$archive" ]; then
@@ -147,6 +174,14 @@ parse baseline || status=$?
 if [ "$status" -ne 0 ]; then
   stop 50 internal "the verified baseline cannot be parsed: $(head -c 400 "$temporary/baseline.error")"
 fi
+if [ "$baseline_version" = 1.1.0 ]; then
+  cp "$here/baseline-policy.jq" "$temporary/policy.jq" 2> /dev/null \
+    || stop 50 internal "cannot read the comparison program baseline-policy.jq"
+  policy_sha256=$(sha256sum < "$temporary/policy.jq" | cut -d ' ' -f 1)
+  jq -e -f "$temporary/policy.jq" --slurpfile record "$temporary/record.json" \
+    --slurpfile list "$temporary/list.json" "$temporary/baseline.json" > "$policy_file" 2> "$temporary/policy.error" \
+    || stop 23 expected-differences "invalid difference list $list_path: $(head -c 400 "$temporary/policy.error")"
+fi
 parse candidate || status=$?
 if [ "$status" -eq 2 ]; then
   stop 31 candidate-parse "the packed Orb repeats a mapping key, so its meaning depends on the parser: $(cat "$temporary/candidate.repeated.json")"
@@ -180,6 +215,18 @@ def show:
 
 def node: if . == null then null else {tag: .t, value: .v} end;
 
+# Move the original tagged nodes, including mapping keys and descendants.
+# Reference replacements retain their original YAML tag.
+def expected_table($original; $entries):
+  reduce $entries[] as $e ($original;
+    if $e.change == "missing" then
+      with_entries(select(.value.p[:($e.parts | length)] != $e.parts))
+    elif $e.change == "added" then
+      . + ([$original[] | select(.p[:($e.copy_parts | length)] == $e.copy_parts)
+            | .p = $e.parts + .p[($e.copy_parts | length):]
+            | {key:([.p,.key] | tojson), value:.}] | from_entries)
+    else .[[$e.parts,false] | tojson].v = $e.after.value end);
+
 def differences($baseline; $candidate):
   ([$baseline[], $candidate[]] | map(.p) | unique) as $paths
   | [ $paths[] as $path
@@ -204,15 +251,30 @@ def differences($baseline; $candidate):
         (any($all[];
            .change == $entry.change and
            (.path | length) < ($entry.path | length) and
-           .path == $entry.path[:(.path | length)]) | not)))
-  | map(.path |= show);
+           .path == $entry.path[:(.path | length)]) | not)));
 
 def canonical: [.[]] | sort_by(.p, .key);
 
-[ range(0; $ARGS.positional | length) as $index
+def full_values($before; $after):
+  .before = (if .change == "added" then {present:false}
+             else {present:true, value:get($before; .path)} end)
+  | .after = (if .change == "missing" then {present:false}
+              else {present:true, value:get($after; .path)} end);
+
+def comparable: map({path,change,before,after}) | sort_by(.path);
+
+$policy[0].entries as $entries
+| (reduce $entries[] as $e ($baseline_document[0];
+     if $e.change == "missing" then delpaths([$e.parts])
+     else setpath($e.parts; $e.after.value) end)) as $expected_document
+| [ range(0; $ARGS.positional | length) as $index
   | ($ARGS.positional[$index] | split(".")) as $path
   | table($baseline_document[0]; $baseline_nodes[0][$index]) as $old
   | table($candidate_document[0]; $candidate_nodes[0][$index]) as $new
+  | [$entries[] | select(.element == $ARGS.positional[$index])] as $listed
+  | expected_table($old; $listed) as $wanted
+  | (differences($old; $new) | if $entries == [] then .
+     else map(full_values($baseline_document[0]; $candidate_document[0])) end) as $actual
   | {path: $ARGS.positional[$index],
      baseline_nodes: ($old | length),
      candidate_nodes: ($new | length),
@@ -222,7 +284,12 @@ def canonical: [.[]] | sort_by(.p, .key);
      json_equal: (get($baseline_document[0]; $path) == get($candidate_document[0]; $path)),
      baseline_canonical: ($old | canonical),
      candidate_canonical: ($new | canonical),
-     differences: differences($old; $new)} ]
+     differences: ($actual | map(.path |= show))}
+    + (if ($entries | length) == 0 then {} else
+       {listed_differences_match: (($actual | comparable) == ($listed | map(.path = .parts) | comparable)),
+        expected_json_equal: (get($expected_document; $path) == get($candidate_document[0]; $path)),
+        mismatches: (differences($wanted; $new) | map(.path |= show))}
+       end) ]
 JQ
 baseline_node_files=()
 candidate_node_files=()
@@ -235,7 +302,7 @@ jq -s '.' "${candidate_node_files[@]}" > "$temporary/candidate.nodes.json"
 jq -n --slurpfile baseline_document "$temporary/baseline.json" \
   --slurpfile candidate_document "$temporary/candidate.json" \
   --slurpfile baseline_nodes "$temporary/baseline.nodes.json" \
-  --slurpfile candidate_nodes "$temporary/candidate.nodes.json" \
+  --slurpfile candidate_nodes "$temporary/candidate.nodes.json" --slurpfile policy "$policy_file" \
   "$program" --args "${targets[@]}" > "$temporary/comparison.json" \
   || stop 50 internal "the comparison program failed"
 
@@ -247,7 +314,8 @@ jq -e '
     (.baseline_nodes > 1) and
     (.baseline_nodes == .baseline_listed) and
     (.candidate_nodes == .candidate_listed) and
-    ((.differences | length) > 0 or .json_equal))
+    ((.differences | length) > 0 or .json_equal) and
+    (has("mismatches") == false or (.mismatches | length) > 0 or .expected_json_equal))
 ' "$temporary/comparison.json" > /dev/null \
   || stop 50 internal "the node listing and the JSON reading of the documents disagree"
 
@@ -261,10 +329,24 @@ for index in "${!targets[@]}"; do
     '. + [{baseline: $baseline, candidate: $candidate}]' <<< "$hashes")
 done
 
-different=$(jq '[.[].differences | length] | add' "$temporary/comparison.json")
+# A kind absent from the Orb has an empty name set. A present kind must be a
+# mapping, including jobs when the expected set is empty.
+jq --slurpfile policy "$policy_file" '
+  . as $orb | [$policy[0].public_names | to_entries[] | .key as $kind | .value as $expected
+    | (if ($orb | has($kind) | not) then []
+       elif ($orb[$kind] | type) == "object" then ($orb[$kind] | keys)
+       else null end) as $actual
+    | {kind:$kind, baseline:$expected, candidate:$actual, matches:($expected == $actual),
+       missing:($expected - ($actual // [])), added:(($actual // []) - $expected)}]
+' "$temporary/candidate.json" > "$temporary/names.json"
+different=$(jq --slurpfile names "$temporary/names.json" '
+  ([.[] | (.mismatches // .differences) | length] | add)
+  + ([.[] | select(.mismatches == [] and .listed_differences_match == false)] | length)
+  + ([$names[0][] | select(.matches == false)] | length)
+' "$temporary/comparison.json")
 if [ "$different" -eq 0 ]; then
   outcome=passed
-  category=equal
+  if [ "$baseline_version" = 1.1.0 ]; then category=adopted-differences; else category=equal; fi
   exit_status=0
 else
   outcome=failed
@@ -273,6 +355,8 @@ else
 fi
 jq -n --arg outcome "$outcome" --arg category "$category" --argjson status "$exit_status" \
   --slurpfile comparison "$temporary/comparison.json" --slurpfile record "$temporary/record.json" \
+  --slurpfile names "$temporary/names.json" --slurpfile policy "$policy_file" \
+  --arg list_path "$list_path" --arg list_sha256 "$list_sha256" --arg policy_sha256 "$policy_sha256" \
   --argjson hashes "$hashes" --arg record_path "$record" \
   --arg record_sha256 "$(sha256sum < "$temporary/record.json" | cut -d ' ' -f 1)" \
   --arg copy_path "$copy_path" --argjson copy_size "$actual_size" --arg copy_sha256 "$actual_sha256" \
@@ -294,13 +378,21 @@ jq -n --arg outcome "$outcome" --arg category "$category" --argjson status "$exi
       | {path, baseline_nodes, candidate_nodes, json_equal,
          baseline_definition_sha256: $hashes[$index].baseline,
          candidate_definition_sha256: $hashes[$index].candidate,
-         differences}],
-    definition_sha256_note: "SHA-256 of the sorted node entries of a target (path, key or value, tag, scalar value) as compact JSON with sorted keys and a final newline. It identifies the parsed definition, not the text."}' \
+         differences} + (if has("mismatches") then {mismatches, expected_json_equal, listed_differences_match} else {} end)],
+    definition_sha256_note: "SHA-256 of the sorted node entries of a target (path, key or value, tag, scalar value) as compact JSON with sorted keys and a final newline. It identifies the parsed definition, not the text."}
+   + (if $list_path == "" then {} else
+      {target_release:"2.0.0", public_names:$names[0], policy_sha256:$policy_sha256,
+       expected_differences:{path:$list_path, sha256:$list_sha256, count:($policy[0].entries | length)}}
+      end)' \
   > "$result"
 
 if [ "$exit_status" -ne 0 ]; then
   {
-    echo "baseline-comparison: difference: $different path(s) differ from the published $(jq -r '.orb + "@" + .version' "$temporary/record.json")"
+    echo "baseline-comparison: $different path or public-name set mismatch(es) for $record"
+    jq -r '.targets[] | select(.mismatches == [] and .listed_differences_match == false)
+      | "  \(.path): observed differences disagree with the adopted list"' "$result"
+    jq -r '.public_names[]? | select(.matches == false)
+      | "  \(.kind): expected names \(.baseline | tojson), candidate names \(.candidate | tojson)"' "$result"
     jq -r '
       def short: tojson | if length > 300 then .[0:300] + "... (" + (length | tostring) + " characters)" else . end;
       # For two long strings, show where they first differ.
@@ -312,9 +404,9 @@ if [ "$exit_status" -ne 0 ]; then
           | ([$at - 30, 0] | max) as $from
           | "    first difference at character \($at): baseline \(.baseline.value[$from:($at + 30)] | tojson), candidate \(.candidate.value[$from:($at + 30)] | tojson)"
         else empty end;
-      .targets[].differences[]
+      .targets[] | (.mismatches // .differences)[]
       | "  \(.change) \(.path)",
-        (if .baseline != null then "    baseline:  \(.baseline.tag) \(.baseline.value | short)" else empty end),
+        (if .baseline != null then "    expected:  \(.baseline.tag) \(.baseline.value | short)" else empty end),
         (if .candidate != null then "    candidate: \(.candidate.tag) \(.candidate.value | short)" else empty end),
         (if .change == "changed" then first_difference else empty end),
         (if .change == "changed" and .baseline_key_tag != .candidate_key_tag

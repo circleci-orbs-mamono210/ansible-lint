@@ -8,7 +8,7 @@
 # A case passes only when the comparison ends with the expected exit status,
 # the expected category, and exactly the expected differing paths.
 #
-# Usage: test-compare-baseline.sh <purpose> [<evidence directory>]
+# Usage: test-compare-baseline.sh <purpose> [<evidence directory>] [1.1.0|2.0.0]
 set -euo pipefail
 
 purpose=${1:?injection, publication or local required}
@@ -17,11 +17,31 @@ evidence_directory=${2:-/tmp/ansible-lint-pack-evidence}
 here=$(cd "$(dirname "$0")" && pwd)
 repository=$(dirname "$here")
 compare="$here/compare-baseline.sh"
-record=tests/baseline/orbss-ansible-lint-1.0.0.json
-copy=tests/baseline/orbss-ansible-lint-1.0.0.yml
+target_release=${3:-1.1.0}
+case "$target_release" in
+  1.1.0) baseline_version=1.0.0; evidence_file="baseline-self-test-${purpose}.json" ;;
+  2.0.0) baseline_version=1.1.0; evidence_file="baseline-self-test-2.0.0-${purpose}.json" ;;
+  *) echo "unsupported target release: $target_release" >&2; exit 1 ;;
+esac
+record="tests/baseline/orbss-ansible-lint-${baseline_version}.json"
+copy="tests/baseline/orbss-ansible-lint-${baseline_version}.yml"
 work=$(mktemp -d)
 trap 'rm -rf "$work"' EXIT
-baseline_before=$(sha256sum "$repository/$record" "$repository/$copy")
+inputs=("$repository/$record" "$repository/$copy")
+positive="$repository/$copy"
+if [ "$target_release" = 2.0.0 ]; then
+  list=$(jq -er '.ci_reference.expected_differences' "$repository/$record")
+  inputs+=("$repository/$list")
+  # Build the positive fixture independently of the list and the comparator.
+  # Keep the packed YAML spelling for cases that edit a tag or a comment.
+  positive="$work/positive.yml"
+  sed -e 's/^\( *\)molecule-role-test:$/\1molecule_role_test:/' \
+      -e 's/^\( *\)molecule-playbook-test:$/\1molecule_playbook_test:/' \
+      -e 's/^\( *PARAM_MOLECULE_ROLE_TEST: \)<< parameters\.molecule-role-test >>$/\1<< parameters.molecule_role_test >>/' \
+      -e 's/^\( *PARAM_MOLECULE_PLAYBOOK_TEST: \)<< parameters\.molecule-playbook-test >>$/\1<< parameters.molecule_playbook_test >>/' \
+      "$repository/$copy" > "$positive"
+fi
+baseline_before=$(sha256sum "${inputs[@]}")
 # The tools of this job, shown first so that a failure names them.
 yq --version
 jq --version
@@ -29,7 +49,7 @@ jq --version
 failed=0
 skipped=0
 
-# Start a case with an isolated root and a packed Orb equal to the baseline.
+# Start each case from the positive fixture for the selected release.
 begin() {
   case_id=$1
   case_group=$2
@@ -41,7 +61,8 @@ begin() {
   mkdir -p "$case_root/root/tests/baseline" "$case_root/dist"
   cp "$repository/$record" "$case_root/root/$record"
   cp "$repository/$copy" "$case_root/root/$copy"
-  cp "$repository/$copy" "$candidate"
+  if [ "$target_release" = 2.0.0 ]; then cp "$repository/$list" "$case_root/root/$list"; fi
+  cp "$positive" "$candidate"
 }
 
 # Replace a text that occurs exactly once. The other bytes stay as they are.
@@ -69,10 +90,11 @@ edit_record() {
 
 category_of() {
   case "$1" in
-    0) echo equal ;;
+    0) if [ "$target_release" = 2.0.0 ]; then echo adopted-differences; else echo equal; fi ;;
     20) echo baseline-record ;;
     21) echo baseline-missing ;;
     22) echo baseline-mismatch ;;
+    23) echo expected-differences ;;
     30) echo candidate-archive ;;
     31) echo candidate-parse ;;
     40) echo difference ;;
@@ -81,10 +103,14 @@ category_of() {
 }
 
 # Run the comparison for the current case and require the expected result.
-# Arguments: the expected exit status, then every expected differing path.
+# After the status, pass mismatch paths or an optional pre-comparison diagnostic.
 expect() {
-  local expected_status=$1 status=0 expected actual outcome=passed
+  local expected_status=$1 status=0 expected actual outcome=passed message_fragment='' diagnostic=''
   shift
+  if [ "$expected_status" -ne 0 ] && [ "$expected_status" -ne 40 ] && [ "$#" -gt 0 ]; then
+    message_fragment=$1
+    shift
+  fi
   if [ "$pack" = yes ]; then
     # The layout of orb-tools/pack: the archive holds ./ and ./orb.yml.
     tar -czf "$case_root/orb_source.tar.gz" -C "$case_root/dist" .
@@ -101,7 +127,29 @@ expect() {
     actual=$(jq -c --argjson status "$status" '
       if .exit_status != $status then error("the result file and the exit status disagree") else . end
       | {exit_status: $status, category, comparison,
-         paths: ([.targets[]?.differences[]?.path] | sort)}' "$case_root/result.json")
+         paths: (([.targets[]? | (.mismatches // .differences)[]?.path] +
+           [.public_names[]? | select(.matches == false) | . as $names |
+             if .candidate == null then "names." + .kind
+             else (.added + .missing)[] | "names." + $names.kind + "." + . end]) | sort)}' "$case_root/result.json")
+    if [ -n "$message_fragment" ]; then
+      diagnostic=$(jq -r '.message // ""' "$case_root/result.json")
+      if [[ "$diagnostic" != *"$message_fragment"* ]]; then
+        actual=$(jq -c --arg message "$diagnostic" '. + {unexpected_message:$message}' <<< "$actual")
+      fi
+    fi
+  fi
+  if [ "$expected_status" -eq 0 ] && [ "$target_release" = 2.0.0 ]; then
+    # Positive evidence must identify all actual changes, including their values.
+    if ! jq -e --slurpfile plan "$case_root/root/$list" '
+      (.targets | length) == 4 and (.public_names | length) == 3 and
+      all(.public_names[]; .matches) and all(.targets[]; .listed_differences_match) and
+      .expected_differences.count == 6 and
+      (([.targets[] as $t | $t.differences[] |
+          {element:$t.path, path:(.path | ltrimstr($t.path+".")), change, before, after}] | sort_by(.path))
+       == ($plan[0].differences | map({element,path,change,before,after}) | sort_by(.path)))
+    ' "$case_root/result.json" > /dev/null; then
+      actual=$(jq -c '. + {valid_positive_evidence:false}' <<< "$actual")
+    fi
   fi
   if [ "$expected" != "$actual" ]; then
     outcome=failed
@@ -113,10 +161,11 @@ expect() {
     } >&2
   fi
   jq -c -n --arg id "$case_id" --arg group "$case_group" --arg target "$case_target" \
-    --arg input "$case_input" --arg result "$outcome" \
+    --arg input "$case_input" --arg result "$outcome" --arg diagnostic "$diagnostic" \
     --argjson expected "$expected" --argjson actual "$actual" \
     '{id: $id, group: $group, target: $target, input: $input,
-      expected: $expected, actual: $actual, result: $result}' >> "$work/cases.jsonl"
+      expected: $expected, actual: $actual, result: $result}
+     + (if $diagnostic == "" then {} else {message:$diagnostic} end)' >> "$work/cases.jsonl"
   printf '%-7s %-4s %3s %-18s %s\n' "$outcome" "$case_id" "$expected_status" \
     "$(category_of "$expected_status")" "$case_input"
 }
@@ -134,6 +183,8 @@ skip() {
 default=executors.default
 execute=commands.execute
 
+case "$target_release" in
+1.1.0)
 # --- A: accepted -------------------------------------------------------------
 
 begin A01 accepted both "the packed Orb has the same bytes as the baseline"
@@ -454,9 +505,134 @@ begin Y04 difference "$execute" "boolean false written as the YAML 1.1 word no, 
 edit_text "$candidate" $'            molecule-playbook-test:\n                default: false\n' $'            molecule-playbook-test:\n                default: no\n'
 expect 40 "$execute.parameters.molecule-playbook-test.default"
 
+  ;;
+
+2.0.0)
+  role_ref="$execute.steps[2].run.environment.PARAM_MOLECULE_ROLE_TEST"
+  playbook_ref="$execute.steps[2].run.environment.PARAM_MOLECULE_PLAYBOOK_TEST"
+
+  begin A01 accepted all "only the six adopted changes"
+  expect 0
+  begin A02 accepted all "mapping keys reordered, flow style, a comment and changed Orb metadata"
+  edit_jq "$candidate" '
+    .commands.execute.parameters |= (to_entries | reverse | from_entries)
+    | .description = "different Orb metadata" | .examples = {} | .jobs = {}'
+  echo '# comparison ignores this comment' >> "$candidate"
+  expect 0
+
+  begin B01 baseline source "stored source missing, candidate also invalid"
+  rm "$case_root/root/$copy"
+  echo '[' > "$candidate"
+  expect 21 "the stored copy is missing"
+  begin B02 baseline source "stored source cannot be read"
+  if [ "$(id -u)" -eq 0 ]; then
+    skip "root can read mode 000"
+  else
+    chmod 000 "$case_root/root/$copy"
+    expect 21 "cannot read the stored copy"
+    chmod 600 "$case_root/root/$copy"
+  fi
+  begin B03 baseline source "wrong size, candidate also invalid"
+  echo >> "$case_root/root/$copy"
+  echo '[' > "$candidate"
+  expect 22 "bytes; the record expects"
+  begin B04 baseline source "same number of bytes, wrong SHA-256"
+  edit_text "$case_root/root/$copy" 'version: 2.1' 'version: 2.2'
+  expect 22 "SHA-256"
+
+  begin L01 policy list "list missing"
+  rm "$case_root/root/$list"
+  expect 23
+  begin L02 policy list "list repeats a path at the expense of another"
+  edit_record "$case_root/root/$list" '.differences[1] = .differences[3]'
+  expect 23
+  begin L03 policy list "listed source for a new definition is the other old definition"
+  edit_record "$case_root/root/$list" '(.differences[] | select(.path=="parameters.molecule_role_test")).copy_from_baseline = "parameters.molecule-playbook-test"'
+  expect 23
+  begin L04 policy list "listed before reference disagrees with the published value"
+  edit_record "$case_root/root/$list" '(.differences[] | select(.change=="changed")).before.value = "wrong"'
+  expect 23
+  begin L05 policy list "the expected reference changes only in the test copy of the list"
+  edit_record "$case_root/root/$list" '(.differences[] | select(.path | endswith("PARAM_MOLECULE_ROLE_TEST"))).after.value = "different listed reference"'
+  expect 40 "$role_ref"
+
+  begin D01 difference "$execute" "one approved reference update omitted"
+  edit_jq "$candidate" '.commands.execute.steps[2].run.environment.PARAM_MOLECULE_ROLE_TEST = "<< parameters.molecule-role-test >>"'
+  expect 40 "$role_ref"
+  begin D02 difference "$execute" "one extra change to the description"
+  edit_jq "$candidate" '.commands.execute.description += "."'
+  expect 40 "$execute.description"
+  begin D03 difference "$execute" "role and playbook environment references swapped"
+  edit_jq "$candidate" '.commands.execute.steps[2].run.environment |=
+    . + {PARAM_MOLECULE_ROLE_TEST:.PARAM_MOLECULE_PLAYBOOK_TEST, PARAM_MOLECULE_PLAYBOOK_TEST:.PARAM_MOLECULE_ROLE_TEST}'
+  expect 40 "$role_ref" "$playbook_ref"
+
+  for kind in role playbook; do
+    old="molecule-$kind-test"
+    new="molecule_${kind}_test"
+    if [ "$kind" = role ]; then env_name=PARAM_MOLECULE_ROLE_TEST; else env_name=PARAM_MOLECULE_PLAYBOOK_TEST; fi
+    ref_path="$execute.steps[2].run.environment.$env_name"
+    parameter="$execute.parameters.$new"
+
+    begin "W-$kind" difference "$execute" "remove only the spaces inside the $kind reference"
+    edit_jq "$candidate" ".commands.execute.steps[2].run.environment.$env_name = \"<<parameters.$new>>\""
+    expect 40 "$ref_path"
+    begin "N-$kind" difference "$execute" "old $kind parameter present with YAML null"
+    edit_jq "$candidate" ".commands.execute.parameters[\"$old\"] = null"
+    expect 40 "$execute.parameters.$old"
+
+    begin "B-$kind" difference "$execute" "set the new $kind default to boolean true"
+    edit_jq "$candidate" ".commands.execute.parameters.$new.default = true"
+    expect 40 "$parameter.default"
+    begin "S-$kind" difference "$execute" "set the new $kind default to the string false"
+    edit_jq "$candidate" ".commands.execute.parameters.$new.default = \"false\""
+    expect 40 "$parameter.default"
+    begin "T-$kind" difference "$execute" "change the description of the new $kind definition"
+    edit_jq "$candidate" ".commands.execute.parameters.$new.description += \".\""
+    expect 40 "$parameter.description"
+  done
+
+  begin D04 difference "$execute" "add an unlisted child to a renamed definition"
+  edit_jq "$candidate" '.commands.execute.parameters.molecule_role_test.extra = null'
+  expect 40 "$execute.parameters.molecule_role_test.extra"
+  begin D05 difference "$execute" "custom YAML tag on a scalar inside a renamed definition"
+  edit_text "$candidate" $'molecule_role_test:\n                default: false' $'molecule_role_test:\n                default: !custom false'
+  expect 40 "$execute.parameters.molecule_role_test.default"
+
+  begin E01 difference executors.default "swap two enum entries in default"
+  edit_jq "$candidate" '.executors.default.parameters.resource_class.enum |= [.[1],.[0]] + .[2:]'
+  expect 40 'executors.default.parameters.resource_class.enum[0]' 'executors.default.parameters.resource_class.enum[1]'
+  begin E02 difference executors.python "change the pinned python image"
+  edit_jq "$candidate" '.executors.python.parameters.image.default += "a"'
+  expect 40 'executors.python.parameters.image.default'
+  begin E03 difference commands.install "remove the final newline from the embedded install script"
+  edit_jq "$candidate" '.commands.install.steps[0].run.command |= rtrimstr("\n")'
+  expect 40 'commands.install.steps[0].run.command'
+
+  for kind in executors commands; do
+    if [ "$kind" = executors ]; then name=python; else name=install; fi
+    begin "A-$kind" name "$kind" "add a public name in $kind"
+    edit_jq "$candidate" ".$kind.extra = .$kind.$name"
+    expect 40 "names.$kind.extra"
+    begin "M-$kind" name "$kind" "remove $kind.$name"
+    edit_jq "$candidate" "del(.$kind.$name)"
+    expect 40 "$kind.$name" "names.$kind.$name"
+    begin "R-$kind" name "$kind" "rename $kind.$name, keeping the count"
+    edit_jq "$candidate" ".$kind.extra = .$kind.$name | del(.$kind.$name)"
+    expect 40 "$kind.$name" "names.$kind.$name" "names.$kind.extra"
+  done
+  begin J01 name jobs "add one public job with the four definitions and six changes correct"
+  edit_jq "$candidate" '.jobs.extra = {executor:"default", steps:["checkout"]}'
+  expect 40 'names.jobs.extra'
+  begin J02 name jobs "jobs is present as a sequence"
+  edit_jq "$candidate" '.jobs = []'
+  expect 40 'names.jobs'
+  ;;
+esac
+
 # --- Result --------------------------------------------------------------------
 
-baseline_after=$(sha256sum "$repository/$record" "$repository/$copy")
+baseline_after=$(sha256sum "${inputs[@]}")
 if [ "$baseline_before" != "$baseline_after" ]; then
   echo "the self-test changed the baseline files of the repository" >&2
   failed=$((failed + 1))
@@ -473,19 +649,20 @@ else
   outcome=failed
 fi
 mkdir -p "$evidence_directory"
-jq -s --arg result "$outcome" --arg purpose "$purpose" --arg commit "${CIRCLE_SHA1:-}" \
+jq -s --arg target_release "$target_release" --arg baseline_version "$baseline_version" \
+  --arg result "$outcome" --arg purpose "$purpose" --arg commit "${CIRCLE_SHA1:-}" \
   --arg job_url "${CIRCLE_BUILD_URL:-}" --argjson failed "$failed" --argjson skipped "$skipped" \
   --arg comparison_sha256 "$(sha256sum "$compare" | cut -d ' ' -f 1)" \
   --arg self_test_sha256 "$(sha256sum "$0" | cut -d ' ' -f 1)" \
   --arg yq_version "$(yq --version 2>&1 | head -n 1)" --arg jq_version "$(jq --version 2>&1 | head -n 1)" \
-  '{result: $result, purpose: $purpose, commit: $commit, job_url: $job_url,
+  '{result: $result, target_release: $target_release, baseline_version: $baseline_version, purpose: $purpose, commit: $commit, job_url: $job_url,
     comparison: ".circleci/compare-baseline.sh", comparison_sha256: $comparison_sha256,
     self_test: ".circleci/test-compare-baseline.sh", self_test_sha256: $self_test_sha256,
     parser: {yaml: $yq_version, json: $jq_version},
     isolation: "Each case used its own temporary copy of the identity record and the stored baseline and its own archive. No file of the repository was changed.",
     cases: length, failed_cases: $failed, skipped_cases: $skipped,
     by_group: (group_by(.group) | map({group: .[0].group, cases: length})),
-    results: .}' "$work/cases.jsonl" > "$evidence_directory/baseline-self-test-${purpose}.json"
-echo "baseline comparison self-test: $outcome ($total cases, $failed failed, $skipped skipped)"
-echo "evidence: $evidence_directory/baseline-self-test-${purpose}.json"
+    results: .}' "$work/cases.jsonl" > "$evidence_directory/$evidence_file"
+echo "baseline comparison self-test ($target_release): $outcome ($total cases, $failed failed, $skipped skipped)"
+echo "evidence: $evidence_directory/$evidence_file"
 [ "$failed" -eq 0 ]

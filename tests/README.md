@@ -122,7 +122,7 @@ publish requires its own successful pack plus all six integration jobs, includin
 the negative observer's self-tests. All prerequisite jobs accept tags; production
 publish accepts only semantic version tags and excludes all branches.
 
-## Baseline comparison of the existing API (#5538)
+## v1.1.0 baseline comparison of the existing API (#5538)
 
 Both `orb-tools/pack` jobs also compare the actual packed Orb with the
 published `orbss/ansible-lint@1.0.0`. The rule is section 5 of
@@ -219,7 +219,7 @@ or added subtree is reported once, at its root.
 | 40 | `difference` | A target differs from the baseline. |
 | 50 | `internal` | The check itself cannot work. |
 
-### Self-test
+### v1.1.0 self-test against v1.0.0
 
 `test-compare-baseline.sh` gives every case its own temporary directory with a
 copy of the identity record, a copy of the stored baseline, and an archive in
@@ -355,6 +355,92 @@ context, or token is added.
 
 The final release candidate repeats the comparison (#5541). Results from
 another commit are not reused.
+
+## v2.0.0 public API comparison (#5553)
+
+The input to the comparison is the `./orb.yml` member of an Orb source archive.
+The 1.1.0 identity record selects the policy adopted in #5552, journal 11411.
+Both the record and its two referenced files come from the candidate checkout.
+The comparison verifies the stored source's size and SHA-256 before parsing it.
+The list supplies the element, path, change type and before/after states.
+Each new parameter takes the full definition of the old one, including YAML
+tags, child keys and description whitespace. A missing key has a different
+state from a present key with a null value. Each candidate reference must
+match the listed string including its spaces. Section 23 of the contract
+defines the required public name sets for each pack.
+
+Run the v2.0.0 suite from the repository root.
+
+```sh
+bash .circleci/test-compare-baseline.sh local /tmp/ansible-lint-pack-evidence 2.0.0
+```
+
+This reads the published source and builds a positive fixture by renaming
+the two parameter keys and rewriting their two references. It constructs
+the fixture independently of the difference list. Each case copies the
+inputs to a fresh directory and invokes the same four-argument comparator
+that accepts an actual archive.
+
+```sh
+bash .circleci/compare-baseline.sh . tests/baseline/orbss-ansible-lint-1.1.0.json \
+  "$archive" "$result_json"
+```
+
+`$archive` names the input tar.gz and `$result_json` names the output file.
+The v1.1.0 self-test is still the default when the third argument is omitted.
+Ticket #5554 switches both pack jobs to the v2.0.0 suite and identity record.
+
+### Inputs and expected results
+
+All candidate mutations below start from the six-change positive fixture.
+Paths abbreviated to `P` or `E` refer to `commands.execute.parameters` or
+`commands.execute.steps[2].run.environment`, respectively. In paired cases
+`K` is `role` or `playbook`, and `ENV` is the corresponding
+`PARAM_MOLECULE_ROLE_TEST` or `PARAM_MOLECULE_PLAYBOOK_TEST`.
+
+| Case | Input | Expected result or mismatch path |
+| --- | --- | --- |
+| A01 | Apply only the two renames and the two reference updates. | Exit 0. Four definitions, six actual differences with matching before/after states and all three name sets. |
+| A02 | Reorder mapping keys, use flow style, add a comment, change Orb metadata/examples and express the zero public jobs as an empty mapping. | Same result as A01. |
+| B01 / B02 | Remove the baseline source / make it unreadable. B01 also has invalid candidate YAML. | Exit 21, `baseline-missing`. The message identifies the missing file or read failure. B02 requires a non-root user. |
+| B03 / B04 | Append a newline / change a byte without changing the file size. B03 also has invalid candidate YAML. | Exit 22, `baseline-mismatch`. The message identifies the size or SHA-256 failure before candidate parsing. |
+| L01 / L02 | Remove the list / replace one row with a duplicate. | Exit 23, `expected-differences`. |
+| L03 / L04 | In the list, copy the other old definition for the new role key / give the wrong before value for a reference. | Exit 23 for a list inconsistent with the verified source. |
+| L05 | Change only the expected role reference in the test copy of the list. | Exit 40 at `E.PARAM_MOLECULE_ROLE_TEST`. |
+| D01 | Omit the role reference update. | `E.PARAM_MOLECULE_ROLE_TEST` |
+| D02 | Also change the command description. | `commands.execute.description` |
+| D03 | Swap the two new environment references. | Both `E.PARAM_MOLECULE_ROLE_TEST` and `E.PARAM_MOLECULE_PLAYBOOK_TEST` |
+| W-role / W-playbook | Remove just the spaces in one reference, e.g. `<<parameters.molecule_role_test>>`. | `E.ENV` for the changed side |
+| N-role / N-playbook | Leave one old key present with YAML `null`. | `P.molecule-K-test` |
+| B-role / B-playbook | Set one new default to boolean `true`. | `P.molecule_K_test.default` |
+| S-role / S-playbook | Set one new default to the string `"false"`. | `P.molecule_K_test.default` |
+| T-role / T-playbook | Change one new parameter's description. | `P.molecule_K_test.description` |
+| D04 / D05 | Add a child to the new role definition / give its default a custom YAML tag. | `P.molecule_role_test.extra` / `P.molecule_role_test.default` |
+| E01 | Swap the first two resource class enum values in the default executor. | `executors.default.parameters.resource_class.enum[0]` and `[1]` |
+| E02 | Change the python executor's pinned image. | `executors.python.parameters.image.default` |
+| E03 | Remove the final newline from the embedded install script. | `commands.install.steps[0].run.command` |
+| A-executors / A-commands | Copy a definition to a new public name in its kind. | Added name `executors.extra` / `commands.extra` |
+| M-executors / M-commands | Remove the python executor / install command. | Missing name and definition `executors.python` / `commands.install` |
+| R-executors / R-commands | Move that definition to `extra` in the same kind. | Both the missing and added names, plus the missing original definition |
+| J01 | Add `jobs.extra` while all four definitions and six approved differences remain correct. | Added public name `jobs.extra` |
+| J02 | Supply a sequence for the jobs section. | Invalid kind `jobs` |
+
+Every candidate mismatch in the table returns exit 40. A missing or
+unreadable identity record returns 20. The self-test writes
+`baseline-self-test-2.0.0-<purpose>.json` to the requested evidence directory.
+It checks the exact paths for each case. In the self-test results a `names.`
+prefix distinguishes membership diagnostics from definition paths.
+
+In the comparator result, `targets[].differences` compares the candidate
+with the published source. `targets[].listed_differences_match` records whether
+the observed paths, change types and full before/after states match the list
+for that element. `targets[].mismatches` compares the candidate with the
+expected result of applying the list. In each mismatch, `baseline` describes
+the expected YAML node and `candidate` describes the observed node.
+`public_names` reports both sets and added/missing names by kind.
+`expected_differences` identifies the list by path, SHA-256 and entry count.
+`policy_sha256` identifies the copy of `.circleci/baseline-policy.jq` used.
+A positive result has category `adopted-differences`.
 
 ## Required checks of the new path (#5539)
 
